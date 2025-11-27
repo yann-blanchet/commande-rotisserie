@@ -2,6 +2,7 @@
 -- Créez ces tables dans votre projet Supabase
 
 -- Table vendors (stands)
+
 CREATE TABLE IF NOT EXISTS vendors (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   nom TEXT, -- Can be NULL initially, will be set when stand is configured
