@@ -1,0 +1,11 @@
+import { createClient } from '@supabase/supabase-js'
+
+// These should be set as environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Helper function to check if user is online
+export const isOnline = () => navigator.onLine
+
