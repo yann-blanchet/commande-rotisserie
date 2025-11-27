@@ -156,12 +156,12 @@ const handleRegister = async () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-gradient-end) 100%);
     padding: 20px;
 }
 
 .register-card {
-    background: white;
+    background: var(--color-bg-white);
     border-radius: 12px;
     padding: 40px;
     max-width: 500px;
@@ -177,7 +177,7 @@ const handleRegister = async () => {
 
 .subtitle {
     text-align: center;
-    color: #666;
+    color: var(--color-text-secondary);
     margin-bottom: 30px;
 }
 
@@ -195,27 +195,27 @@ const handleRegister = async () => {
 
 .form-group label {
     font-weight: 600;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .form-group input,
 .vendor-select {
     padding: 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border-medium);
     border-radius: 8px;
     font-size: 1rem;
 }
 
 
 .form-hint {
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 0.85rem;
     margin-top: -5px;
 }
 
 .btn-primary {
     padding: 12px;
-    background: #ff6b35;
+    background: var(--color-primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -226,7 +226,7 @@ const handleRegister = async () => {
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: #e55a2b;
+    background: var(--color-primary-hover);
 }
 
 .btn-primary:disabled {
@@ -237,8 +237,8 @@ const handleRegister = async () => {
 .success-message {
     margin-top: 20px;
     padding: 15px;
-    background: #d4edda;
-    color: #155724;
+    background: var(--color-success-light);
+    color: var(--color-success-dark);
     border-radius: 8px;
     text-align: center;
 }
@@ -246,7 +246,7 @@ const handleRegister = async () => {
 .success-message .login-link {
     display: block;
     margin-top: 10px;
-    color: #155724;
+    color: var(--color-success-dark);
     font-weight: 600;
     text-decoration: underline;
 }
@@ -254,8 +254,8 @@ const handleRegister = async () => {
 .error-message {
     margin-top: 20px;
     padding: 12px;
-    background: #fee;
-    color: #c33;
+    background: var(--color-error-light);
+    color: var(--color-error-text);
     border-radius: 8px;
     text-align: center;
 }
@@ -264,16 +264,16 @@ const handleRegister = async () => {
     margin-top: 30px;
     text-align: center;
     padding-top: 20px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--color-border-light);
 }
 
 .register-footer p {
-    color: #666;
+    color: var(--color-text-secondary);
     margin-bottom: 10px;
 }
 
 .login-link {
-    color: #667eea;
+    color: var(--color-secondary);
     font-weight: 600;
     text-decoration: none;
 }

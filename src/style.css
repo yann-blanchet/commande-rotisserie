@@ -9,6 +9,57 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Colors - Primary */
+  --color-primary: #ff6b35;
+  --color-primary-hover: #e55a2b;
+  
+  /* Colors - Secondary */
+  --color-secondary: #667eea;
+  --color-secondary-hover: #5568d3;
+  --color-secondary-gradient-end: #764ba2;
+  
+  /* Colors - Success */
+  --color-success: #4caf50;
+  --color-success-hover: #45a049;
+  --color-success-light: #d4edda;
+  --color-success-dark: #155724;
+  
+  /* Colors - Error */
+  --color-error: #f44336;
+  --color-error-light: #fee;
+  --color-error-text: #c33;
+  
+  /* Colors - Warning */
+  --color-warning: #ffc107;
+  --color-warning-light: #fff3cd;
+  --color-warning-dark: #856404;
+  
+  /* Colors - Info */
+  --color-info-light: #f0f7ff;
+  --color-info-medium: #e3f2fd;
+  --color-info-dark: #1976d2;
+  
+  /* Colors - Text */
+  --color-text-primary: #333;
+  --color-text-secondary: #666;
+  --color-text-tertiary: #888;
+  --color-text-quaternary: #999;
+  
+  /* Colors - Background */
+  --color-bg-white: #ffffff;
+  --color-bg-light: #f9f9f9;
+  --color-bg-lighter: #f5f5f5;
+  --color-bg-gray: #f0f0f0;
+  --color-bg-gray-hover: #e0e0e0;
+  
+  /* Colors - Border */
+  --color-border-light: #eee;
+  --color-border-medium: #ddd;
+  --color-border-dark: #999;
+  
+  /* Colors - Overlay */
+  --color-overlay: rgba(0, 0, 0, 0.5);
 }
 
 * {

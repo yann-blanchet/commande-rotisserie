@@ -155,7 +155,7 @@ onMounted(() => {
 .back-btn {
     background: none;
     border: none;
-    color: #666;
+    color: var(--color-text-secondary);
     cursor: pointer;
     font-size: 1rem;
     margin-bottom: 10px;
@@ -163,7 +163,7 @@ onMounted(() => {
 }
 
 .back-btn:hover {
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .header h1 {
@@ -174,7 +174,7 @@ onMounted(() => {
 .loading {
     text-align: center;
     padding: 40px;
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 .products-grid {
@@ -184,7 +184,7 @@ onMounted(() => {
 }
 
 .product-card {
-    background: white;
+    background: var(--color-bg-white);
     border-radius: 12px;
     padding: 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -199,19 +199,19 @@ onMounted(() => {
 
 .product-info h3 {
     margin: 0 0 10px 0;
-    color: #333;
+    color: var(--color-text-primary);
     font-size: 1.3rem;
 }
 
 .product-info p {
-    color: #666;
+    color: var(--color-text-secondary);
     margin: 10px 0;
 }
 
 .product-price {
     margin-top: 15px;
     font-size: 1.5rem;
-    color: #ff6b35;
+    color: var(--color-primary);
 }
 
 .modal-overlay {
@@ -220,7 +220,7 @@ onMounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -228,7 +228,7 @@ onMounted(() => {
 }
 
 .modal-content {
-    background: white;
+    background: var(--color-bg-white);
     border-radius: 12px;
     padding: 30px;
     max-width: 500px;
@@ -244,12 +244,12 @@ onMounted(() => {
     border: none;
     font-size: 2rem;
     cursor: pointer;
-    color: #666;
+    color: var(--color-text-secondary);
     line-height: 1;
 }
 
 .close-btn:hover {
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .modal-content h2 {
@@ -270,12 +270,12 @@ onMounted(() => {
 
 .form-group label {
     font-weight: 600;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .form-group input {
     padding: 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border-medium);
     border-radius: 8px;
     font-size: 1rem;
 }
@@ -289,8 +289,8 @@ onMounted(() => {
 .btn-secondary {
     flex: 1;
     padding: 12px;
-    background: #f0f0f0;
-    color: #333;
+    background: var(--color-bg-gray);
+    color: var(--color-text-primary);
     border: none;
     border-radius: 8px;
     font-size: 1rem;
@@ -299,13 +299,13 @@ onMounted(() => {
 }
 
 .btn-secondary:hover {
-    background: #e0e0e0;
+    background: var(--color-bg-gray-hover);
 }
 
 .btn-primary {
     flex: 1;
     padding: 12px;
-    background: #ff6b35;
+    background: var(--color-primary);
     color: white;
     border: none;
     border-radius: 8px;
@@ -315,14 +315,14 @@ onMounted(() => {
 }
 
 .btn-primary:hover {
-    background: #e55a2b;
+    background: var(--color-primary-hover);
 }
 
 .success-message {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: #4caf50;
+    background: var(--color-success);
     color: white;
     padding: 15px 20px;
     border-radius: 8px;

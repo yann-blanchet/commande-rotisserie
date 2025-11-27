@@ -149,12 +149,12 @@ const verifyCode = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-gradient-end) 100%);
   padding: 20px;
 }
 
 .login-card {
-  background: white;
+  background: var(--color-bg-white);
   border-radius: 12px;
   padding: 40px;
   max-width: 400px;
@@ -170,7 +170,7 @@ const verifyCode = async () => {
 
 .subtitle {
   text-align: center;
-  color: #666;
+  color: var(--color-text-secondary);
   margin-bottom: 30px;
 }
 
@@ -188,12 +188,12 @@ const verifyCode = async () => {
 
 .form-group label {
   font-weight: 600;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .form-group input {
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-medium);
   border-radius: 8px;
   font-size: 1rem;
 }
@@ -206,7 +206,7 @@ const verifyCode = async () => {
 }
 
 .otp-info {
-  background: #f0f7ff;
+  background: var(--color-info-light);
   padding: 15px;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -214,20 +214,20 @@ const verifyCode = async () => {
 
 .otp-info p {
   margin: 5px 0;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .otp-hint {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
 .otp-code-display {
   margin-top: 15px;
   padding: 15px;
-  background: #fff3cd;
-  border: 1px solid #ffc107;
+  background: var(--color-warning-light);
+  border: 1px solid var(--color-warning);
   border-radius: 8px;
 }
 
@@ -236,14 +236,14 @@ const verifyCode = async () => {
   align-items: center;
   gap: 8px;
   font-weight: bold;
-  color: #856404;
+  color: var(--color-warning-dark);
   margin-bottom: 8px;
   font-size: 0.95rem;
 }
 
 .dev-warning-text {
   font-size: 0.85rem;
-  color: #856404;
+  color: var(--color-warning-dark);
   margin-bottom: 12px;
 }
 
@@ -251,12 +251,12 @@ const verifyCode = async () => {
   font-size: 1.8rem;
   font-weight: bold;
   text-align: center;
-  color: #856404;
+  color: var(--color-warning-dark);
   letter-spacing: 8px;
-  background: white;
+  background: var(--color-bg-white);
   padding: 12px;
   border-radius: 6px;
-  border: 2px dashed #ffc107;
+  border: 2px dashed var(--color-warning);
 }
 
 .form-actions {
@@ -268,8 +268,8 @@ const verifyCode = async () => {
 .btn-secondary {
   flex: 1;
   padding: 12px;
-  background: #f0f0f0;
-  color: #333;
+  background: var(--color-bg-gray);
+  color: var(--color-text-primary);
   border: none;
   border-radius: 8px;
   font-size: 1rem;
@@ -278,7 +278,7 @@ const verifyCode = async () => {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e0e0e0;
+  background: var(--color-bg-gray-hover);
 }
 
 .btn-secondary:disabled {
@@ -288,7 +288,7 @@ const verifyCode = async () => {
 
 .btn-primary {
   padding: 12px;
-  background: #ff6b35;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -299,7 +299,7 @@ const verifyCode = async () => {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #e55a2b;
+  background: var(--color-primary-hover);
 }
 
 .btn-primary:disabled {
@@ -310,8 +310,8 @@ const verifyCode = async () => {
 .error-message {
   margin-top: 20px;
   padding: 12px;
-  background: #fee;
-  color: #c33;
+  background: var(--color-error-light);
+  color: var(--color-error-text);
   border-radius: 8px;
   text-align: center;
 }
@@ -320,16 +320,16 @@ const verifyCode = async () => {
   margin-top: 30px;
   text-align: center;
   padding-top: 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--color-border-light);
 }
 
 .login-footer p {
-  color: #666;
+  color: var(--color-text-secondary);
   margin-bottom: 10px;
 }
 
 .register-link {
-  color: #667eea;
+  color: var(--color-secondary);
   font-weight: 600;
   text-decoration: none;
 }

@@ -81,7 +81,7 @@ onMounted(() => {
 }
 
 .subtitle {
-  color: #666;
+  color: var(--color-text-secondary);
   font-size: 1.1rem;
   margin-bottom: 15px;
 }
@@ -90,7 +90,7 @@ onMounted(() => {
   display: inline-block;
   margin-top: 10px;
   padding: 8px 16px;
-  background: #667eea;
+  background: var(--color-secondary);
   color: white;
   text-decoration: none;
   border-radius: 8px;
@@ -99,13 +99,13 @@ onMounted(() => {
 }
 
 .trader-link:hover {
-  background: #5568d3;
+  background: var(--color-secondary-hover);
 }
 
 .loading {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .vendors-grid {
@@ -115,7 +115,7 @@ onMounted(() => {
 }
 
 .vendor-card {
-  background: white;
+  background: var(--color-bg-white);
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -130,26 +130,26 @@ onMounted(() => {
 
 .vendor-info h2 {
   margin: 0 0 10px 0;
-  color: #333;
+  color: var(--color-text-primary);
   font-size: 1.5rem;
 }
 
 .vendor-info p {
-  color: #666;
+  color: var(--color-text-secondary);
   margin: 10px 0;
 }
 
 .vendor-meta {
   margin-top: 15px;
   font-size: 0.9rem;
-  color: #888;
+  color: var(--color-text-tertiary);
 }
 
 .btn-primary {
   margin-top: 15px;
   width: 100%;
   padding: 12px;
-  background: #ff6b35;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -159,13 +159,13 @@ onMounted(() => {
 }
 
 .btn-primary:hover {
-  background: #e55a2b;
+  background: var(--color-primary-hover);
 }
 
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 </style>
 
