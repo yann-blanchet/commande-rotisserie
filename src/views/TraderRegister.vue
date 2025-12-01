@@ -17,13 +17,16 @@
                 </button>
             </form>
 
-            <div v-if="success" class="success-message">
+            <div v-if="success && !error" class="success-message">
                 ✅ Email enregistré avec succès ! Vous pouvez maintenant vous connecter.
                 <router-link to="/trader/login" class="login-link">Se connecter</router-link>
             </div>
 
             <div v-if="error" class="error-message">
+                <strong>❌ Erreur :</strong><br>
                 {{ error }}
+                <br><br>
+                <small>Veuillez vérifier vos informations et réessayer. Si le problème persiste, contactez le support.</small>
             </div>
 
             <div class="register-footer">
@@ -67,10 +70,10 @@ const handleRegister = async () => {
             return
         }
 
-        // Check if email is already registered
-        const { data: existingVendor, error: checkError } = await supabase
-            .from('vendors')
-            .select('id, email')
+        // Check if email is already registered in profiles
+        const { data: existingProfile, error: checkError } = await supabase
+            .from('profiles')
+            .select('id, email, role')
             .eq('email', email.value.toLowerCase().trim())
             .single()
 
@@ -78,72 +81,74 @@ const handleRegister = async () => {
             throw checkError
         }
 
-        if (existingVendor) {
-            error.value = 'Cet email est déjà enregistré. Vous pouvez vous connecter directement. Si vous voulez réinitialiser, supprimez d\'abord l\'utilisateur dans Supabase Dashboard > Authentication > Users.'
+        if (existingProfile) {
+            error.value = 'Cet email est déjà enregistré. Vous pouvez vous connecter directement.'
             loading.value = false
             return
         }
 
-        // Create a temporary vendor entry with just the email
-        // The vendor will complete their profile after login
-        const { data: newVendor, error: createError } = await supabase
-            .from('vendors')
+        // Create profile with role 'vendor'
+        // Note: stand_nom and stand_description will be set later when the trader configures their stand
+        const { data: newProfile, error: profileError } = await supabase
+            .from('profiles')
             .insert({
                 email: email.value.toLowerCase().trim(),
-                nom: 'Stand à configurer',
-                description: 'Stand en attente de configuration'
+                role: 'vendor',
+                stand_nom: null, // Will be set when trader configures their stand
+                stand_description: null // Will be set when trader configures their stand
             })
             .select()
             .single()
 
-        if (createError) {
-            console.error('Create vendor error:', createError)
-            throw createError
+        if (profileError) {
+            console.error('Create profile error:', profileError)
+            throw profileError
         }
 
-        if (!newVendor) {
+        if (!newProfile) {
             error.value = 'Erreur lors de la création du compte'
             loading.value = false
             return
         }
 
-        // Create user in Supabase Auth (with random password - they'll use OTP)
-        // This allows us to use RLS policies and have proper user management
-        const randomPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16) + 'A1!'
-        const { error: authError } = await supabase.auth.signUp({
-            email: email.value.toLowerCase().trim(),
-            password: randomPassword, // User won't use this - they use OTP
-            options: {
-                data: {
-                    vendor_id: newVendor.id,
-                    role: 'trader',
-                    email_verified: false // Will be verified via OTP
-                },
-                emailRedirectTo: undefined // No email confirmation needed
-            }
-        })
-
-        // Handle auth creation errors
-        if (authError) {
-            if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
-                // User already exists in Auth - that's okay, vendor is created
-                console.log('User already exists in Auth (non-blocking)')
-            } else {
-                // Other error - log but continue (vendor is created, OTP will work)
-                console.warn('Auth user creation warning (non-blocking):', authError.message)
-            }
-        }
+        // Note: No vendor is created at registration time
+        // The vendor/stand will be created later when:
+        // 1. An admin associates the trader's profile to a market
+        // 2. Or the trader logs in and sets up their stand
 
         success.value = true
-        // Reset form after 2 seconds and redirect
+        // Reset form after 3 seconds and redirect (give time to see success message)
         setTimeout(() => {
-            email.value = ''
-            // Redirect to login
-            window.location.href = '/trader/login'
-        }, 2000)
+            // Only redirect if still successful (no error occurred)
+            if (success.value && !error.value) {
+                email.value = ''
+                // Redirect to login
+                window.location.href = '/trader/login'
+            }
+        }, 3000)
     } catch (err: any) {
         console.error('Error registering:', err)
-        error.value = err.message || 'Erreur lors de l\'enregistrement'
+        // Ensure success is false if there's an error
+        success.value = false
+        
+        // Provide more detailed error messages
+        let errorMessage = 'Erreur lors de l\'enregistrement'
+        if (err.message) {
+            errorMessage = err.message
+        } else if (err.code) {
+            errorMessage = `Erreur ${err.code}: ${err.message || 'Erreur inconnue'}`
+        }
+        
+        // Add more context for common errors
+        if (err.code === '23505') { // Unique constraint violation
+            errorMessage = 'Cet email est déjà enregistré. Vous pouvez vous connecter directement.'
+        } else if (err.code === '23503') { // Foreign key violation
+            errorMessage = 'Erreur de référence dans la base de données. Veuillez contacter le support.'
+        } else if (err.code === '42501') { // Insufficient privilege
+            errorMessage = 'Erreur de permissions. Veuillez contacter le support.'
+        }
+        
+        error.value = errorMessage
     } finally {
         loading.value = false
     }
@@ -253,11 +258,27 @@ const handleRegister = async () => {
 
 .error-message {
     margin-top: 20px;
-    padding: 12px;
+    padding: 15px;
     background: var(--color-error-light);
     color: var(--color-error-text);
     border-radius: 8px;
     text-align: center;
+    border: 2px solid var(--color-error);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.error-message strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.error-message small {
+    display: block;
+    margin-top: 10px;
+    opacity: 0.8;
+    font-size: 0.85rem;
 }
 
 .register-footer {

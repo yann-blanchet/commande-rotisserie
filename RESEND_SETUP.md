@@ -122,3 +122,8 @@ from: 'Commande Rotisserie <noreply@votredomaine.com>',
 
 Et dans `supabase/functions/send-otp-email/index.ts`, vous pouvez supprimer ou commenter la section de fallback (Option 2) si vous voulez forcer l'utilisation de Resend.
 
+
+
+
+
+

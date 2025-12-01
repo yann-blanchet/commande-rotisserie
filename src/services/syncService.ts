@@ -44,6 +44,37 @@ export class SyncService {
   }
 
   /**
+   * Sync markets cache from Supabase
+   */
+  async syncMarkets(): Promise<void> {
+    if (!isOnline()) {
+      console.log('Offline: Using cached markets')
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('markets')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (error) throw error
+
+      if (data) {
+        for (const market of data) {
+          await db.markets_cache.put({
+            id: market.id,
+            data: market,
+            updated_at: new Date().toISOString()
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing markets:', error)
+    }
+  }
+
+  /**
    * Sync vendors cache from Supabase
    */
   async syncVendors(): Promise<void> {
@@ -55,15 +86,21 @@ export class SyncService {
     try {
       const { data, error } = await supabase
         .from('vendors')
-        .select('*')
+        .select('*, markets(*), profiles(stand_nom, stand_description)')
 
       if (error) throw error
 
       if (data) {
         for (const vendor of data) {
+          // Include stand_nom and stand_description from profile in cached data
+          const vendorData = {
+            ...vendor,
+            stand_nom: vendor.profiles?.stand_nom || null,
+            stand_description: vendor.profiles?.stand_description || null
+          }
           await db.vendors_cache.put({
             id: vendor.id,
-            data: vendor,
+            data: vendorData,
             updated_at: new Date().toISOString()
           })
         }
@@ -164,12 +201,14 @@ export class SyncService {
    */
   async initializeSync(): Promise<void> {
     if (isOnline()) {
+      await this.syncMarkets()
       await this.syncVendors()
       await this.syncPendingOrders()
     }
 
     // Listen for online event
     window.addEventListener('online', () => {
+      this.syncMarkets()
       this.syncPendingOrders()
       this.syncVendors()
     })

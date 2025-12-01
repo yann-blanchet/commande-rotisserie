@@ -1,56 +1,83 @@
 <template>
   <div class="vendor-list">
     <header class="header">
-      <h1>🍗 Marché - Poulet Rôti</h1>
-      <p class="subtitle">Choisissez votre stand</p>
-      <router-link to="/trader/login" class="trader-link">Espace commerçant</router-link>
+      <h1>🍗 Mes stands favoris</h1>
+      <p class="subtitle">Accédez rapidement à vos stands préférés</p>
+      <div class="header-links">
+        <router-link to="/favorites" class="favorites-link">⭐ Gérer mes favoris</router-link>
+        <router-link to="/trader/login" class="trader-link">Espace commerçant</router-link>
+        <router-link to="/admin/login" class="admin-link">Espace admin</router-link>
+      </div>
     </header>
 
     <div v-if="loading" class="loading">Chargement...</div>
     
-    <div v-else class="vendors-grid">
+    <div v-else-if="favoriteVendors.length > 0" class="vendors-grid">
       <div
-        v-for="vendor in vendors"
+        v-for="vendor in favoriteVendors"
         :key="vendor.id"
         class="vendor-card"
         @click="goToVendor(vendor.id)"
       >
         <div class="vendor-info">
-          <h2>{{ vendor.data.nom || vendor.data.name }}</h2>
-          <p v-if="vendor.data.description">{{ vendor.data.description }}</p>
+          <h2>{{ vendor.data.stand_nom || vendor.data.nom || vendor.data.name || 'Stand' }}</h2>
+          <p v-if="vendor.data.stand_description || vendor.data.description">{{ vendor.data.stand_description || vendor.data.description }}</p>
           <div class="vendor-meta">
-            <span v-if="vendor.data.location">📍 {{ vendor.data.location }}</span>
+            <span v-if="vendor.data.location" class="location">📍 {{ vendor.data.location }}</span>
+            <div v-if="vendor.data.markets" class="market-info">
+              <span class="market-name">🏪 {{ vendor.data.markets.name }}</span>
+              <span class="market-place">📍 {{ vendor.data.markets.place }}</span>
+            </div>
           </div>
         </div>
         <button class="btn-primary">Voir les produits →</button>
       </div>
     </div>
 
-    <div v-if="vendors.length === 0 && !loading" class="empty-state">
-      <p>Aucun stand disponible pour le moment</p>
+    <div v-else class="empty-state">
+      <p>Vous n'avez pas encore de stand favori.</p>
+      <p class="empty-hint">
+        Scannez le QR code d'un stand ou ouvrez un lien direct pour l'ajouter automatiquement à vos favoris.
+      </p>
+      <router-link to="/favorites" class="btn-primary">
+        Gérer mes favoris
+      </router-link>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { db } from '../db/database'
 import { syncService } from '../services/syncService'
-import type { VendorCache } from '../db/database'
+import type { VendorCache, Favorite } from '../db/database'
 
 const router = useRouter()
 const vendors = ref<VendorCache[]>([])
+const favorites = ref<Favorite[]>([])
 const loading = ref(true)
+
+const favoriteVendors = computed(() =>
+  vendors.value.filter(vendor =>
+    favorites.value.some(fav => fav.stand === vendor.id)
+  )
+)
 
 const loadVendors = async () => {
   loading.value = true
-  // Try to sync first if online
+
+  // Try to sync vendors first if online
   await syncService.syncVendors()
   
-  // Load from cache
+  // Load vendors from cache
   const cachedVendors = await db.vendors_cache.toArray()
   vendors.value = cachedVendors
+
+  // Load favorites from local DB
+  const cachedFavorites = await db.favorites.toArray()
+  favorites.value = cachedFavorites
+
   loading.value = false
 }
 
@@ -86,11 +113,18 @@ onMounted(() => {
   margin-bottom: 15px;
 }
 
-.trader-link {
-  display: inline-block;
+.header-links {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
   margin-top: 10px;
+}
+
+.favorites-link,
+.trader-link,
+.admin-link {
+  display: inline-block;
   padding: 8px 16px;
-  background: var(--color-secondary);
   color: white;
   text-decoration: none;
   border-radius: 8px;
@@ -98,8 +132,29 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.favorites-link {
+  background: var(--color-primary);
+}
+
+.favorites-link:hover {
+  background: var(--color-primary-hover);
+}
+
+.trader-link {
+  background: var(--color-secondary);
+}
+
 .trader-link:hover {
   background: var(--color-secondary-hover);
+}
+
+.admin-link {
+  background: var(--color-warning-dark);
+}
+
+.admin-link:hover {
+  background: var(--color-warning);
+  color: white;
 }
 
 .loading {
@@ -143,6 +198,30 @@ onMounted(() => {
   margin-top: 15px;
   font-size: 0.9rem;
   color: var(--color-text-tertiary);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.market-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 5px;
+  padding: 8px;
+  background: var(--color-info-light);
+  border-radius: 6px;
+}
+
+.market-name {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.market-place {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
 }
 
 .btn-primary {

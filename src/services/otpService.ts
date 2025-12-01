@@ -49,45 +49,11 @@ export class OTPService {
 
       if (error) throw error
 
-      // Send email via Supabase Edge Function
-      try {
-        const { data: functionData, error: functionError } = await supabase.functions.invoke('send-otp-email', {
-          body: {
-            email: email.toLowerCase().trim(),
-            code: code
-          }
-        })
-
-        if (functionError) {
-          console.warn('Error sending email via function:', functionError)
-          // Fallback: show code in UI if email fails
-          return {
-            success: true,
-            message: `Code OTP: ${code} (valide 10 minutes) - Email non envoyé, vérifiez votre configuration`
-          }
-        }
-
-        // Check if function returned success
-        if (functionData && functionData.success) {
-          return {
-            success: true,
-            message: 'Code OTP envoyé par email. Vérifiez votre boîte de réception.'
-          }
-        } else {
-          // Function executed but didn't return success
-          console.warn('Function executed but returned:', functionData)
-          return {
-            success: true,
-            message: `Code OTP: ${code} (valide 10 minutes) - Email non envoyé, vérifiez votre configuration`
-          }
-        }
-      } catch (emailError: any) {
-        console.warn('Error sending email:', emailError)
-        // Fallback: show code in UI if email fails
-        return {
-          success: true,
-          message: `Code OTP: ${code} (valide 10 minutes) - Email non envoyé, vérifiez votre configuration`
-        }
+      // In production, you would send this via SMS or email
+      // For now, we'll return it (you should remove this in production!)
+      return {
+        success: true,
+        message: `Code OTP: ${code} (valide 10 minutes)`
       }
     } catch (error: any) {
       console.error('Error requesting OTP:', error)
@@ -147,10 +113,6 @@ export class OTPService {
         .update({ used: true })
         .eq('email', email.toLowerCase().trim())
         .eq('code', code)
-
-      // Note: If a Supabase Auth user exists for this email, they were created during registration
-      // The vendor_id is stored in user_metadata, but we use OTP for authentication
-      // The session is managed via localStorage with vendor_id
 
       return {
         success: true,

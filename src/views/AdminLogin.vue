@@ -1,14 +1,14 @@
 <template>
-  <div class="trader-login">
+  <div class="admin-login">
     <div class="login-card">
-      <h1>🍗 Espace Commerçant</h1>
+      <h1>🔐 Connexion Admin</h1>
       <p class="subtitle">Connectez-vous avec votre code OTP</p>
 
       <!-- Step 1: Request OTP -->
       <div v-if="step === 'request'" class="login-form">
         <div class="form-group">
-          <label>Email</label>
-          <input v-model="email" type="email" required placeholder="votre@email.com" :disabled="loading" />
+          <label>Email admin</label>
+          <input v-model="email" type="email" required placeholder="admin@example.com" :disabled="loading" />
         </div>
         <button @click="requestCode" class="btn-primary" :disabled="loading || !email">
           {{ loading ? 'Envoi...' : 'Recevoir le code' }}
@@ -52,7 +52,7 @@
 
       <div class="login-footer">
         <p>Pas encore enregistré ?</p>
-        <router-link to="/trader/register" class="register-link">S'enregistrer</router-link>
+        <router-link to="/admin/register" class="register-link">S'enregistrer</router-link>
       </div>
     </div>
   </div>
@@ -98,7 +98,7 @@ const requestCode = async () => {
   error.value = ''
   otpMessage.value = ''
 
-  const result = await unifiedOtpService.requestOTP(email.value.trim(), 'vendor')
+  const result = await unifiedOtpService.requestOTP(email.value.trim(), 'admin')
 
   if (result.success) {
     otpMessage.value = result.message
@@ -107,7 +107,7 @@ const requestCode = async () => {
   } else {
     error.value = result.message
     // Si l'email n'est pas trouvé, suggérer l'enregistrement
-    if (result.message.includes('non trouvé') || result.message.includes('associé')) {
+    if (result.message.includes('non trouvé') || result.message.includes('autorisé')) {
       error.value = result.message + ' Vous pouvez vous enregistrer ci-dessous.'
     }
   }
@@ -124,21 +124,18 @@ const verifyCode = async () => {
   loading.value = true
   error.value = ''
 
-  const result = await unifiedOtpService.verifyOTP(email.value.trim(), otpCode.value, 'vendor')
+  const result = await unifiedOtpService.verifyOTP(email.value.trim(), otpCode.value, 'admin')
 
-  if (result.success && result.profileId) {
-    // Store trader session with vendor_id (if exists) and profile_id
-    // Note: vendor_id may be undefined if trader has no stands yet
-    localStorage.setItem('trader_session', JSON.stringify({
-      vendor_id: result.vendorId || null,
-      profile_id: result.profileId,
+  if (result.success) {
+    // Store admin session
+    localStorage.setItem('admin_session', JSON.stringify({
       email: email.value.trim(),
       authenticated: true,
       authenticated_at: new Date().toISOString()
     }))
-    router.push('/trader/home')
+    router.push('/admin/markets')
   } else {
-    error.value = result.message || 'Erreur lors de la connexion'
+    error.value = result.message
   }
 
   loading.value = false
@@ -146,7 +143,7 @@ const verifyCode = async () => {
 </script>
 
 <style scoped>
-.trader-login {
+.admin-login {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -340,3 +337,4 @@ const verifyCode = async () => {
   text-decoration: underline;
 }
 </style>
+
