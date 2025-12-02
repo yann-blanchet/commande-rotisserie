@@ -91,3 +91,4 @@ Une fois un stand associé à un marché :
 - La date de livraison sera calculée automatiquement selon les jours du marché
 
 
+

@@ -119,3 +119,4 @@ FROM pg_constraint
 WHERE conrelid = 'vendors'::regclass;
 ```
 
+

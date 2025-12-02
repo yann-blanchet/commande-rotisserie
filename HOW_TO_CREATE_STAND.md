@@ -182,3 +182,4 @@ Ajouter une interface pour que le trader puisse créer son premier stand directe
 4. Créer automatiquement le vendor avec le `profile_id` du trader
 5. Rediriger vers la configuration du stand
 
+

@@ -81,8 +81,8 @@ export class UnifiedOTPService {
           try {
             // Check if error has response data with code
             if (functionError.context && functionError.context.body) {
-              const errorBody = typeof functionError.context.body === 'string' 
-                ? JSON.parse(functionError.context.body) 
+              const errorBody = typeof functionError.context.body === 'string'
+                ? JSON.parse(functionError.context.body)
                 : functionError.context.body
               if (errorBody && errorBody.code) {
                 fallbackCode = errorBody.code
@@ -141,7 +141,7 @@ export class UnifiedOTPService {
   /**
    * Verify OTP code and return profile info
    */
-  async verifyOTP(email: string, code: string, role: ProfileRole): Promise<{ 
+  async verifyOTP(email: string, code: string, role: ProfileRole): Promise<{
     success: boolean
     message: string
     vendorId?: string
@@ -212,7 +212,7 @@ export class UnifiedOTPService {
           .eq('profile_id', profile.id)
           .limit(1)
 
-        if (!vendorError && vendors && vendors.length > 0) {
+        if (!vendorError && vendors && vendors.length > 0 && vendors[0]) {
           vendorId = vendors[0].id
         }
       }

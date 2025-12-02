@@ -220,6 +220,7 @@ const vendorInfo = ref<any>(null)
 const marketInfo = ref<{ name: string; place: string } | null>(null)
 const availableMarkets = ref<any[]>([])
 const loadingMarkets = ref(false)
+const error = ref<string | null>(null)
 const standForm = ref({
   nom: '',
   description: '',
@@ -619,9 +620,6 @@ const skipMarketAssociation = async () => {
   await loadOrders()
 }
 
-const createStand = async () => {
-  await updateStand()
-}
 
 const updateStand = async () => {
   if (!standForm.value.nom.trim() || !traderVendorId.value) {

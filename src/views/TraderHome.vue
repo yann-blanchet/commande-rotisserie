@@ -292,8 +292,11 @@ const calculateNextMarketDate = (marketDays: string[]): Date | null => {
   const today = new Date()
   const currentDay = today.getDay()
   
-  // Get market day numbers
-  const marketDayNumbers = marketDays.map(day => dayMap[day.toLowerCase()]).sort((a, b) => a - b)
+  // Get market day numbers (filter out undefined values)
+  const marketDayNumbers = marketDays
+    .map(day => dayMap[day.toLowerCase()])
+    .filter((dayNum): dayNum is number => dayNum !== undefined)
+    .sort((a, b) => a - b)
 
   // Find next market day
   for (const dayNum of marketDayNumbers) {
@@ -309,10 +312,12 @@ const calculateNextMarketDate = (marketDays: string[]): Date | null => {
   // If no market day found this week, get the first one next week
   if (marketDayNumbers.length > 0) {
     const firstDayNum = marketDayNumbers[0]
-    const daysUntil = 7 - currentDay + firstDayNum
-    const nextDate = new Date(today)
-    nextDate.setDate(today.getDate() + daysUntil)
-    return nextDate
+    if (firstDayNum !== undefined) {
+      const daysUntil = 7 - currentDay + firstDayNum
+      const nextDate = new Date(today)
+      nextDate.setDate(today.getDate() + daysUntil)
+      return nextDate
+    }
   }
 
   return null
