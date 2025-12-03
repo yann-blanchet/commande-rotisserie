@@ -346,9 +346,20 @@ const submitOrder = async () => {
         }
         pickupDateTime.setHours(hours, minutes, 0, 0)
 
+        // Obtenir le market_id depuis le vendor (premier marché associé)
+        const vendor = await db.vendors_cache.get(vendorId)
+        let marketId: string | undefined = undefined
+        if (vendor?.data.vendor_markets && Array.isArray(vendor.data.vendor_markets) && vendor.data.vendor_markets.length > 0) {
+          marketId = vendor.data.vendor_markets[0].market_id
+        } else if (vendor?.data.market_id) {
+          // Fallback pour compatibilité avec ancien schéma
+          marketId = vendor.data.market_id
+        }
+
         await syncService.createOfflineOrder({
             vendor_id: vendorId,
             product_id: selectedProduct.value.id,
+            market_id: marketId,
             customer_name: orderForm.value.customer_name,
             pickup_time: pickupDateTime.toISOString()
         })

@@ -10,6 +10,7 @@ export interface OfflineOrder {
   id_temporaire?: number
   vendor_id: string
   product_id: string
+  market_id?: string // Marché sur lequel la commande a été passée
   customer_name: string
   pickup_time: string
   created_at: string

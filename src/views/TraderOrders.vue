@@ -4,8 +4,6 @@
       <h1>🍗 Mes Commandes</h1>
       <div class="header-actions">
         <router-link to="/trader/home" class="btn-home">🏠 Mes Stands</router-link>
-        <button @click="openEditModal" class="btn-edit-stand">✏️ Éditer le stand</button>
-        <button @click="goToProducts" class="btn-secondary">Gérer les produits</button>
         <button @click="handleLogout" class="logout-btn">Déconnexion</button>
       </div>
     </header>
@@ -21,13 +19,13 @@
 
     <div v-if="loading" class="loading">Chargement...</div>
 
-    <!-- Debug info (temporary) -->
-    <div v-if="!loading" style="padding: 10px; background: #f0f0f0; margin: 10px; border-radius: 4px; font-size: 0.85rem;">
-      Debug: needsSetup={{ needsSetup }}, needsMarketAssociation={{ needsMarketAssociation }}, onboardingStep={{ onboardingStep }}
-    </div>
-
     <!-- Onboarding Process -->
     <div v-else-if="needsSetup || needsMarketAssociation" class="setup-form">
+      <!-- Debug info (temporary) -->
+      <div style="padding: 10px; background: #f0f0f0; margin: 10px; border-radius: 4px; font-size: 0.85rem;">
+        Debug: needsSetup={{ needsSetup }}, needsMarketAssociation={{ needsMarketAssociation }}, onboardingStep={{
+          onboardingStep }}
+      </div>
       <div class="setup-card">
         <!-- Step 1: Nom + Description -->
         <div v-if="onboardingStep === 1">
@@ -88,13 +86,8 @@
 
             <div class="form-group">
               <label>Emplacement dans le marché</label>
-              <input 
-                v-model="standForm.location" 
-                type="text" 
-                placeholder="Ex: Allée A, Stand 12" 
-                :disabled="saving || !standForm.market_id"
-                class="form-input"
-              />
+              <input v-model="standForm.location" type="text" placeholder="Ex: Allée A, Stand 12"
+                :disabled="saving || !standForm.market_id" class="form-input" />
               <small class="form-hint">Indiquez où se trouve votre stand dans le marché</small>
             </div>
 
@@ -115,29 +108,69 @@
     </div>
 
     <div v-else class="orders-list">
-      <div v-for="order in orders" :key="order.id" class="order-card" :class="{ 'picked-up': order.data.picked_up }">
-        <div class="order-header">
-          <div>
-            <h3>{{ order.data.customer_name }}</h3>
-            <p class="order-time">
-              Retrait: {{ formatDateTime(order.data.pickup_time) }}
-            </p>
-            <p class="order-created">
-              Commandé: {{ formatDateTime(order.data.created_at) }}
-            </p>
-          </div>
-          <div class="order-status">
-            <span v-if="order.data.picked_up" class="status-badge picked">Retiré</span>
-            <span v-else class="status-badge pending">En attente</span>
-          </div>
+      <!-- Sélecteur de marché pour filtrer les commandes -->
+      <div v-if="standMarkets && standMarkets.length > 1" class="market-filter-section">
+        <div class="filter-header">
+          <span class="filter-icon">🏪</span>
+          <label class="filter-label">Filtrer par marché:</label>
         </div>
-        <div class="order-product">
-          <strong>Produit:</strong> {{ getProductName(order.data.product_id) }}
-        </div>
-        <div class="order-actions">
-          <button v-if="!order.data.picked_up" @click="markAsPickedUp(order)" class="btn-mark-picked">
-            Marquer comme retiré
-          </button>
+        <select v-model="selectedMarketFilter" @change="filterOrdersByMarket" class="market-select">
+          <option value="">Tous les marchés</option>
+          <option v-for="market in standMarkets" :key="market.id" :value="market.id">
+            {{ market.name }} - {{ market.place }}
+          </option>
+        </select>
+      </div>
+      
+      <div v-if="selectedMarketFilter && standMarkets" class="current-market-badge">
+        <span class="badge-icon">📊</span>
+        <span>Commandes pour: <strong>{{ getMarketName(selectedMarketFilter) }}</strong></span>
+      </div>
+      
+      <div class="orders-grid">
+        <div v-for="order in orders" :key="order.id" class="order-card" :class="{ 'picked-up': order.data.picked_up }">
+          <div class="order-card-header">
+            <div class="customer-info">
+              <h3 class="customer-name">{{ order.data.customer_name }}</h3>
+              <div class="order-meta">
+                <div class="meta-item">
+                  <span class="meta-icon">📅</span>
+                  <span class="meta-label">Retrait:</span>
+                  <span class="meta-value">{{ formatDateTime(order.data.pickup_time) }}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-icon">🕐</span>
+                  <span class="meta-label">Commandé:</span>
+                  <span class="meta-value">{{ formatDateTime(order.data.created_at) }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="order-status">
+              <span v-if="order.data.picked_up" class="status-badge picked">
+                <span class="badge-icon">✓</span>
+                <span>Retiré</span>
+              </span>
+              <span v-else class="status-badge pending">
+                <span class="badge-icon">⏳</span>
+                <span>En attente</span>
+              </span>
+            </div>
+          </div>
+          
+          <div class="order-product-section">
+            <span class="product-icon">📦</span>
+            <div class="product-info">
+              <span class="product-label">Produit:</span>
+              <span class="product-name">{{ getProductName(order.data.product_id) }}</span>
+            </div>
+          </div>
+          
+          <div class="order-actions" v-if="!order.data.picked_up">
+            <button @click="markAsPickedUp(order)" class="btn-mark-picked">
+              <span class="btn-icon">✓</span>
+              <span>Marquer comme retiré</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -151,7 +184,7 @@
       <div class="modal-content" @click.stop>
         <button class="close-btn" @click="closeEditModal">×</button>
         <h2>✏️ Éditer le stand</h2>
-        
+
         <!-- Market Info Display -->
         <div v-if="marketInfo && (marketInfo.name || marketInfo.place)" class="market-info-display">
           <h3>🏪 Informations du marché</h3>
@@ -160,7 +193,7 @@
             <p v-if="marketInfo.place"><strong>📍 Lieu :</strong> {{ marketInfo.place }}</p>
           </div>
         </div>
-        
+
         <div v-else-if="vendorInfo && !vendorInfo.market_id" class="market-info-display no-market">
           <p>ℹ️ Aucun marché associé à ce stand</p>
         </div>
@@ -178,9 +211,8 @@
               :disabled="saving"></textarea>
           </div>
 
-          <div class="form-group">
-            <label>Emplacement</label>
-            <input v-model="standForm.location" type="text" placeholder="Ex: Allée A, Stand 12" :disabled="saving" />
+          <div class="form-hint">
+            <small>💡 Pour modifier l'emplacement dans un marché, utilisez le bouton "Ajouter un marché" depuis la page Mes Stands</small>
           </div>
 
           <div class="form-actions">
@@ -221,6 +253,8 @@ const marketInfo = ref<{ name: string; place: string } | null>(null)
 const availableMarkets = ref<any[]>([])
 const loadingMarkets = ref(false)
 const error = ref<string | null>(null)
+const standMarkets = ref<any[]>([]) // Marchés associés au stand
+const selectedMarketFilter = ref<string>('') // Marché sélectionné pour filtrer
 const standForm = ref({
   nom: '',
   description: '',
@@ -247,6 +281,7 @@ const loadOrders = async () => {
 
     // Check if a specific stand is requested via query parameter
     const standId = route.query.stand as string | undefined
+    const marketId = route.query.market as string | undefined // Nouveau : filtrer par marché
     let vendorId: string | null = null
 
     if (standId) {
@@ -292,7 +327,7 @@ const loadOrders = async () => {
     if (isOnline()) {
       const { data: vendor, error: vendorError } = await supabase
         .from('vendors')
-        .select('*, markets(*), profiles(stand_nom, stand_description)')
+        .select('*, vendor_markets(market_id, location, markets(*)), profiles(stand_nom, stand_description)')
         .eq('id', vendorId)
         .single()
 
@@ -305,65 +340,78 @@ const loadOrders = async () => {
           return
         }
       }
-      
+
       if (vendor) {
         vendorInfo.value = vendor
         console.log('Vendor loaded:', vendor)
-        console.log('Market data:', vendor.markets)
-        console.log('Profile data:', vendor.profiles)
-        console.log('Profile data type:', typeof vendor.profiles, Array.isArray(vendor.profiles))
+
+        // Handle vendor_markets (array of market associations)
+        const vendorMarkets = Array.isArray(vendor.vendor_markets) ? vendor.vendor_markets : []
+        const firstMarket = vendorMarkets.length > 0 ? vendorMarkets[0].markets : null
         
-        // Store market info
-        if (vendor.markets && (vendor.markets.name || vendor.markets.place)) {
+        // Charger les marchés associés au stand pour le filtre
+        standMarkets.value = vendorMarkets
+          .map((vm: any) => vm.markets)
+          .filter((m: any) => m)
+        
+        // Initialiser le filtre depuis l'URL si présent
+        const marketIdFromUrl = route.query.market as string | undefined
+        if (marketIdFromUrl) {
+          selectedMarketFilter.value = marketIdFromUrl
+        }
+
+        console.log('Vendor markets:', vendorMarkets)
+        console.log('First market:', firstMarket)
+        console.log('Stand markets for filter:', standMarkets.value)
+        console.log('Profile data:', vendor.profiles)
+
+        // Store market info (use first market for backward compatibility)
+        if (firstMarket && (firstMarket.name || firstMarket.place)) {
           marketInfo.value = {
-            name: vendor.markets.name || '',
-            place: vendor.markets.place || ''
+            name: firstMarket.name || '',
+            place: firstMarket.place || ''
           }
           console.log('Market info set:', marketInfo.value)
         } else {
           marketInfo.value = null
           console.log('No market info available')
         }
-        
-        // Get stand name/description from profile (not vendor)
-        // Note: profiles might be an array or an object depending on Supabase version
-        const profile = Array.isArray(vendor.profiles) ? vendor.profiles[0] : vendor.profiles
-        console.log('Extracted profile:', profile)
-        
-        const standNom = profile?.stand_nom || null || ''
-        const standDescription = profile?.stand_description || null || ''
-        
+
+        // Get stand name/description from vendor (now stored in vendors table)
+        // Fallback to profiles for backward compatibility
+        const standNom = vendor.stand_nom ?? vendor.profiles?.stand_nom ?? null
+        const standDescription = vendor.stand_description ?? vendor.profiles?.stand_description ?? null
+
         console.log('Onboarding check:', {
-          profile,
           standNom,
           standNomType: typeof standNom,
-          standNomValue: `"${standNom}"`,
+          standNomValue: standNom === null ? 'null' : standNom === undefined ? 'undefined' : `"${standNom}"`,
           standNomLength: standNom?.length || 0,
-          hasStandName: standNom && standNom.trim() !== '',
-          market_id: vendor.market_id,
-          hasMarket: vendor.market_id !== null && vendor.market_id !== undefined
+          hasStandName: standNom !== null && standNom !== undefined && typeof standNom === 'string' && standNom.trim() !== '',
+          vendorMarketsCount: vendorMarkets.length,
+          hasMarket: vendorMarkets.length > 0
         })
-        
+
         // Initialize stand form with current values
         standForm.value = {
           nom: standNom || '',
           description: standDescription || '',
-          location: vendor.location || '',
-          market_id: vendor.market_id || ''
+          location: vendorMarkets.length > 0 ? vendorMarkets[0].location || '' : '',
+          market_id: vendorMarkets.length > 0 ? vendorMarkets[0].market_id || '' : ''
         }
-        
+
         // Check onboarding status
         // A stand name is considered empty if it's null, undefined, or an empty string (after trim)
-        const hasStandName = standNom !== null && standNom !== undefined && standNom.trim() !== ''
-        const hasMarket = vendor.market_id !== null && vendor.market_id !== undefined
-        
+        const hasStandName = standNom !== null && standNom !== undefined && typeof standNom === 'string' && standNom.trim() !== ''
+        const hasMarket = vendorMarkets.length > 0
+
         console.log('Final onboarding decision:', {
           hasStandName,
           hasMarket,
           needsSetup: !hasStandName,
           needsMarketAssociation: hasStandName && !hasMarket
         })
-        
+
         if (!hasStandName) {
           // Step 1: Need to set name and description
           console.log('✅ Showing onboarding step 1 - No stand name')
@@ -403,7 +451,7 @@ const loadOrders = async () => {
         console.log('Cached vendor loaded:', cachedVendor.data)
         console.log('Cached market data:', cachedVendor.data.markets)
         console.log('Cached profile data:', cachedVendor.data.profiles)
-        
+
         // Store market info from cache
         if (cachedVendor.data.markets && (cachedVendor.data.markets.name || cachedVendor.data.markets.place)) {
           marketInfo.value = {
@@ -415,33 +463,38 @@ const loadOrders = async () => {
           marketInfo.value = null
           console.log('No market info in cache')
         }
-        
+
         // Get stand name/description from profile (not vendor)
         // Note: profiles might be an array or an object depending on cache structure
-        const profile = Array.isArray(cachedVendor.data.profiles) 
-          ? cachedVendor.data.profiles[0] 
+        const profile = Array.isArray(cachedVendor.data.profiles)
+          ? cachedVendor.data.profiles[0]
           : cachedVendor.data.profiles
         const standNom = profile?.stand_nom || cachedVendor.data.stand_nom || ''
         const standDescription = profile?.stand_description || cachedVendor.data.stand_description || ''
-        
+
         console.log('Onboarding check (offline):', {
           standNom,
           hasStandName: standNom && standNom.trim() !== '',
           market_id: cachedVendor.data.market_id,
           hasMarket: cachedVendor.data.market_id !== null && cachedVendor.data.market_id !== undefined
         })
-        
+
         // Initialize stand form with current values
+        // Get location from vendor_markets (or fallback to cached location for backward compatibility)
+        const cachedVendorMarkets = Array.isArray(cachedVendor.data.vendor_markets) ? cachedVendor.data.vendor_markets : []
+        const cachedLocation = cachedVendorMarkets.length > 0 ? cachedVendorMarkets[0].location : (cachedVendor.data.location || '')
+        const cachedMarketId = cachedVendorMarkets.length > 0 ? cachedVendorMarkets[0].market_id : (cachedVendor.data.market_id || '')
+        
         standForm.value = {
           nom: standNom,
           description: standDescription,
-          location: cachedVendor.data.location || '',
-          market_id: cachedVendor.data.market_id || ''
+          location: cachedLocation,
+          market_id: cachedMarketId
         }
         // Check onboarding status (offline mode)
         const hasStandName = standNom && standNom.trim() !== ''
         const hasMarket = cachedVendor.data.market_id !== null && cachedVendor.data.market_id !== undefined
-        
+
         if (!hasStandName) {
           console.log('Showing onboarding step 1 (offline)')
           needsSetup.value = true
@@ -495,7 +548,7 @@ const loadMarkets = async () => {
     if (isOnline()) {
       await syncService.syncMarkets()
     }
-    
+
     // Load from cache
     const cachedMarkets = await db.markets_cache.toArray()
     availableMarkets.value = cachedMarkets
@@ -522,28 +575,17 @@ const saveStandInfo = async () => {
       return
     }
 
-    // Get vendor to find profile_id
-    const { data: vendor, error: vendorError } = await supabase
+    // Update vendor with stand_nom and stand_description (now in vendors table)
+    const { error: vendorUpdateError } = await supabase
       .from('vendors')
-      .select('profile_id')
-      .eq('id', traderVendorId.value)
-      .single()
-
-    if (vendorError || !vendor || !vendor.profile_id) {
-      throw new Error('Impossible de trouver le profil associé')
-    }
-
-    // Update profile with stand_nom and stand_description
-    const { error: profileError } = await supabase
-      .from('profiles')
       .update({
         stand_nom: standForm.value.nom.trim(),
         stand_description: standForm.value.description.trim() || null
       })
-      .eq('id', vendor.profile_id)
+      .eq('id', traderVendorId.value)
 
-    if (profileError) {
-      throw profileError
+    if (vendorUpdateError) {
+      throw vendorUpdateError
     }
 
     // Refresh vendor cache
@@ -576,22 +618,39 @@ const associateMarket = async () => {
       return
     }
 
-    // Update vendor with market_id and location
-    const updateData: any = {
-      market_id: standForm.value.market_id
-    }
+    // Check if vendor is already associated with this market
+    const { data: existing } = await supabase
+      .from('vendor_markets')
+      .select('id')
+      .eq('vendor_id', traderVendorId.value)
+      .eq('market_id', standForm.value.market_id)
+      .maybeSingle()
 
-    if (standForm.value.location && standForm.value.location.trim()) {
-      updateData.location = standForm.value.location.trim()
-    }
+    if (existing) {
+      // Update existing association with location if provided
+      if (standForm.value.location && standForm.value.location.trim()) {
+        const { error: updateError } = await supabase
+          .from('vendor_markets')
+          .update({ location: standForm.value.location.trim() })
+          .eq('id', existing.id)
 
-    const { error: vendorUpdateError } = await supabase
-      .from('vendors')
-      .update(updateData)
-      .eq('id', traderVendorId.value)
+        if (updateError) {
+          throw updateError
+        }
+      }
+    } else {
+      // Create new association in vendor_markets
+      const { error: insertError } = await supabase
+        .from('vendor_markets')
+        .insert({
+          vendor_id: traderVendorId.value,
+          market_id: standForm.value.market_id,
+          location: standForm.value.location?.trim() || null
+        })
 
-    if (vendorUpdateError) {
-      throw vendorUpdateError
+      if (insertError) {
+        throw insertError
+      }
     }
 
     // Refresh vendor cache
@@ -635,35 +694,13 @@ const updateStand = async () => {
       return
     }
 
-    // Get vendor to find profile_id
-    const { data: vendor, error: vendorError } = await supabase
-      .from('vendors')
-      .select('profile_id')
-      .eq('id', traderVendorId.value)
-      .single()
-
-    if (vendorError || !vendor || !vendor.profile_id) {
-      throw new Error('Impossible de trouver le profil associé')
-    }
-
-    // Update profile with stand_nom and stand_description
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        stand_nom: standForm.value.nom.trim(),
-        stand_description: standForm.value.description.trim() || null
-      })
-      .eq('id', vendor.profile_id)
-
-    if (profileError) {
-      throw profileError
-    }
-
-    // Update vendor with location only
+    // Update vendor with stand_nom and stand_description (now in vendors table)
+    // Note: location is managed per market via vendor_markets, not here
     const { error: vendorUpdateError } = await supabase
       .from('vendors')
       .update({
-        location: standForm.value.location.trim() || null
+        stand_nom: standForm.value.nom.trim(),
+        stand_description: standForm.value.description.trim() || null
       })
       .eq('id', traderVendorId.value)
 
@@ -693,26 +730,31 @@ const openEditModal = async () => {
     if (isOnline()) {
       const { data: vendor, error } = await supabase
         .from('vendors')
-        .select('*, markets(*), profiles(stand_nom, stand_description)')
+        .select('*, vendor_markets(market_id, location, markets(*)), profiles(stand_nom, stand_description)')
         .eq('id', traderVendorId.value)
         .single()
-      
+
       if (!error && vendor) {
         vendorInfo.value = vendor
-        if (vendor.markets && (vendor.markets.name || vendor.markets.place)) {
+        // Handle vendor_markets (array of market associations)
+        const vendorMarkets = Array.isArray(vendor.vendor_markets) ? vendor.vendor_markets : []
+        const firstMarket = vendorMarkets.length > 0 ? vendorMarkets[0].markets : null
+
+        if (firstMarket && (firstMarket.name || firstMarket.place)) {
           marketInfo.value = {
-            name: vendor.markets.name || '',
-            place: vendor.markets.place || ''
+            name: firstMarket.name || '',
+            place: firstMarket.place || ''
           }
         } else {
           marketInfo.value = null
         }
-        // Update form with current values from profile
+        // Update form with current values from vendor (stand_nom/stand_description now in vendors table)
+        // Note: location and market_id are not edited here, they're managed per market
         standForm.value = {
-          nom: vendor.profiles?.stand_nom || '',
-          description: vendor.profiles?.stand_description || '',
-          location: vendor.location || '',
-          market_id: vendor.market_id || ''
+          nom: vendor.stand_nom || vendor.profiles?.stand_nom || '',
+          description: vendor.stand_description || vendor.profiles?.stand_description || '',
+          location: '', // Not used in edit form
+          market_id: '' // Not used in edit form
         }
       }
     } else {
@@ -728,14 +770,15 @@ const openEditModal = async () => {
         } else {
           marketInfo.value = null
         }
-        // Get stand name/description from profile (not vendor)
+        // Get stand name/description from vendor (stand_nom/stand_description now in vendors table)
         const standNom = cachedVendor.data.profiles?.stand_nom || cachedVendor.data.stand_nom || ''
         const standDescription = cachedVendor.data.profiles?.stand_description || cachedVendor.data.stand_description || ''
+        
         standForm.value = {
           nom: standNom,
           description: standDescription,
-          location: cachedVendor.data.location || '',
-          market_id: cachedVendor.data.market_id || ''
+          location: '', // Not used in edit form
+          market_id: '' // Not used in edit form
         }
       }
     }
@@ -744,15 +787,16 @@ const openEditModal = async () => {
 
 const closeEditModal = () => {
   showEditStand.value = false
-  // Reset form to current vendor values from profile
+  // Reset form to current vendor values
   if (vendorInfo.value) {
     const standNom = vendorInfo.value.profiles?.stand_nom || vendorInfo.value.stand_nom || ''
     const standDescription = vendorInfo.value.profiles?.stand_description || vendorInfo.value.stand_description || ''
+    
     standForm.value = {
       nom: standNom,
       description: standDescription,
-      location: vendorInfo.value.location || '',
-      market_id: vendorInfo.value.market_id || ''
+      location: '', // Not used in edit form
+      market_id: '' // Not used in edit form
     }
   }
 }
@@ -812,13 +856,36 @@ const formatDateTime = (dateString: string): string => {
   }).format(date)
 }
 
-const goToProducts = () => {
-  router.push('/trader/products')
-}
-
 const handleLogout = async () => {
   localStorage.removeItem('trader_session')
   router.push('/trader/login')
+}
+
+// Filtrer les commandes par marché
+const filterOrdersByMarket = () => {
+  if (selectedMarketFilter.value) {
+    router.push({
+      path: '/trader/orders',
+      query: {
+        stand: traderVendorId.value,
+        market: selectedMarketFilter.value
+      }
+    })
+  } else {
+    router.push({
+      path: '/trader/orders',
+      query: {
+        stand: traderVendorId.value
+      }
+    })
+  }
+  loadOrders()
+}
+
+// Obtenir le nom d'un marché
+const getMarketName = (marketId: string): string => {
+  const market = standMarkets.value.find((m: any) => m.id === marketId)
+  return market ? `${market.name} - ${market.place}` : 'Marché inconnu'
 }
 
 // Auto-refresh when coming online
@@ -844,24 +911,31 @@ onUnmounted(() => {
 .trader-orders {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 16px;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
+  padding: 16px 0;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .header h1 {
-  font-size: 2rem;
+  font-size: 1.8rem;
+  font-weight: 800;
   margin: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .btn-home {
-  padding: 10px 20px;
-  background: var(--color-primary);
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -869,24 +943,33 @@ onUnmounted(() => {
   font-weight: 600;
   text-decoration: none;
   display: inline-block;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .btn-home:hover {
-  background: var(--color-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .logout-btn {
   padding: 10px 20px;
-  background: #f0f0f0;
-  color: #333;
-  border: none;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 2px solid #fecaca;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
 }
 
 .logout-btn:hover {
-  background: #e0e0e0;
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
 .status-bar {
@@ -894,9 +977,11 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding: 15px;
-  background: #f9f9f9;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #e2e8f0;
   border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .status-indicator {
@@ -937,95 +1022,277 @@ onUnmounted(() => {
 }
 
 .orders-list {
+  margin-top: 20px;
+}
+
+.market-filter-section {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-icon {
+  font-size: 1.3rem;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.market-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.market-select:hover {
+  border-color: #cbd5e1;
+}
+
+.market-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.current-market-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 2px solid #93c5fd;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  color: #1e40af;
+}
+
+.badge-icon {
+  font-size: 1.2rem;
+}
+
+.orders-grid {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 16px;
 }
 
 .order-card {
   background: white;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid #ff6b35;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 2px solid #e2e8f0;
+  border-left: 4px solid #667eea;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.order-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.order-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: #cbd5e1;
 }
 
 .order-card.picked-up {
-  opacity: 0.7;
-  border-left-color: #4caf50;
+  opacity: 0.75;
+  border-left-color: #10b981;
 }
 
-.order-header {
+.order-card.picked-up::before {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+}
+
+.order-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 15px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f1f5f9;
 }
 
-.order-header h3 {
-  margin: 0 0 5px 0;
-  font-size: 1.3rem;
-  color: #333;
+.customer-info {
+  flex: 1;
 }
 
-.order-time {
-  margin: 5px 0;
-  color: #666;
-  font-size: 0.95rem;
+.customer-name {
+  margin: 0 0 12px 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a202c;
 }
 
-.order-created {
-  margin: 5px 0;
-  color: #999;
-  font-size: 0.85rem;
+.order-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.meta-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.meta-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.meta-value {
+  color: #334155;
+  font-weight: 600;
+}
+
+.order-status {
+  flex-shrink: 0;
 }
 
 .status-badge {
-  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge .badge-icon {
+  font-size: 1rem;
 }
 
 .status-badge.pending {
-  background: #fff3cd;
-  color: #856404;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border: 1px solid #fcd34d;
 }
 
 .status-badge.picked {
-  background: #d4edda;
-  color: #155724;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  border: 1px solid #6ee7b7;
 }
 
-.order-product {
-  margin: 15px 0;
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 8px;
+.order-product-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.product-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.product-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.product-label {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.product-name {
+  color: #1a202c;
+  font-weight: 600;
+  font-size: 1rem;
 }
 
 .order-actions {
-  margin-top: 15px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
 }
 
 .btn-mark-picked {
-  padding: 10px 20px;
-  background: #4caf50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .btn-mark-picked:hover {
-  background: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-icon {
+  font-size: 1.1rem;
 }
 
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 2px dashed #cbd5e1;
+  margin-top: 20px;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  margin: 0;
 }
 
 .header-actions {
@@ -1212,19 +1479,6 @@ onUnmounted(() => {
   font-style: italic;
 }
 
-.btn-edit-stand {
-  padding: 10px 20px;
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.btn-edit-stand:hover {
-  background: var(--color-primary-hover);
-}
 
 .modal-overlay {
   position: fixed;

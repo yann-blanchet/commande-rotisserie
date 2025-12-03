@@ -23,6 +23,7 @@ export class SyncService {
           .insert({
             vendor_id: order.vendor_id,
             product_id: order.product_id,
+            market_id: order.market_id || null, // Inclure market_id si disponible
             customer_name: order.customer_name,
             pickup_time: order.pickup_time,
             created_at: order.created_at
@@ -86,17 +87,26 @@ export class SyncService {
     try {
       const { data, error } = await supabase
         .from('vendors')
-        .select('*, markets(*), profiles(stand_nom, stand_description)')
+        .select('*, vendor_markets(market_id, location, markets(*)), profiles(stand_nom, stand_description)')
 
       if (error) throw error
 
       if (data) {
         for (const vendor of data) {
           // Include stand_nom and stand_description from profile in cached data
+          // Handle vendor_markets as array (can have multiple markets)
+          const vendorMarkets = Array.isArray(vendor.vendor_markets) ? vendor.vendor_markets : []
+          // For backward compatibility, use first market if exists
+          const firstMarket = vendorMarkets.length > 0 ? vendorMarkets[0].markets : null
+
           const vendorData = {
             ...vendor,
-            stand_nom: vendor.profiles?.stand_nom || null,
-            stand_description: vendor.profiles?.stand_description || null
+            stand_nom: vendor.stand_nom || vendor.profiles?.stand_nom || null,
+            stand_description: vendor.stand_description || vendor.profiles?.stand_description || null,
+            markets: firstMarket, // Keep for backward compatibility
+            vendor_markets: vendorMarkets, // New structure
+            market_id: firstMarket?.id || null, // Keep for backward compatibility
+            location: vendorMarkets.length > 0 ? vendorMarkets[0].location : null // Keep for backward compatibility
           }
           await db.vendors_cache.put({
             id: vendor.id,

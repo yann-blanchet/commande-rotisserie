@@ -35,11 +35,7 @@
       </div>
 
       <div v-else class="markets-grid">
-        <div
-          v-for="market in markets"
-          :key="market.id"
-          class="market-card"
-        >
+        <div v-for="market in markets" :key="market.id" class="market-card">
           <div class="market-header">
             <h3>{{ market.data.name }}</h3>
             <div class="market-actions">
@@ -47,7 +43,7 @@
               <button @click="deleteMarket(market.id)" class="btn-delete">🗑️</button>
             </div>
           </div>
-          
+
           <div class="market-info">
             <div class="market-place">
               <strong>📍 Lieu:</strong> {{ market.data.place }}
@@ -55,11 +51,7 @@
             <div class="market-days">
               <strong>📅 Jours:</strong>
               <div class="days-list">
-                <span
-                  v-for="day in market.data.days"
-                  :key="day"
-                  class="day-badge"
-                >
+                <span v-for="day in market.data.days" :key="day" class="day-badge">
                   {{ formatDay(day) }}
                 </span>
               </div>
@@ -70,11 +62,7 @@
                 Aucun stand
               </span>
               <div v-else class="stands-list">
-                <span
-                  v-for="stand in getMarketStands(market.id)"
-                  :key="stand.id"
-                  class="stand-badge"
-                >
+                <span v-for="stand in getMarketStands(market.id)" :key="stand.id" class="stand-badge">
                   {{ stand.stand_nom || stand.nom || 'Stand sans nom' }}
                 </span>
               </div>
@@ -94,31 +82,23 @@
       <div class="modal-content" @click.stop>
         <button class="close-btn" @click="closeManageStandsModal">×</button>
         <h2>🍗 Gérer les stands - {{ selectedMarket?.data.name }}</h2>
-        
+
         <div v-if="loadingStands" class="loading">Chargement des stands...</div>
-        
+
         <div v-else class="stands-management">
           <div class="form-group">
             <label>Associer un stand à ce marché</label>
             <select v-model="selectedVendorId" class="vendor-select" :disabled="savingStand">
               <option value="">-- Sélectionner un stand --</option>
-              <option
-                v-for="vendor in availableVendors"
-                :key="vendor.id"
-                :value="vendor.id"
-                :disabled="vendor.market_id === selectedMarket?.id"
-              >
+              <option v-for="vendor in availableVendors" :key="vendor.id" :value="vendor.id"
+                :disabled="isVendorInMarket(vendor, selectedMarket?.id)">
                 {{ vendor.stand_nom || vendor.nom || 'Stand sans nom' }}
-                <span v-if="vendor.market_id && vendor.market_id !== selectedMarket?.id">
-                  (déjà dans un autre marché)
+                <span v-if="isVendorInMarket(vendor, selectedMarket?.id)">
+                  (déjà dans ce marché)
                 </span>
               </option>
             </select>
-            <button
-              @click="assignStandToMarket"
-              class="btn-primary"
-              :disabled="!selectedVendorId || savingStand"
-            >
+            <button @click="assignStandToMarket" class="btn-primary" :disabled="!selectedVendorId || savingStand">
               {{ savingStand ? 'Association...' : 'Associer' }}
             </button>
           </div>
@@ -129,20 +109,14 @@
               <p>Aucun stand associé</p>
             </div>
             <div v-else class="stands-list-modal">
-              <div
-                v-for="stand in marketStands"
-                :key="stand.id"
-                class="stand-item"
-              >
+              <div v-for="stand in marketStands" :key="stand.id" class="stand-item">
                 <div class="stand-item-info">
                   <strong>{{ stand.stand_nom || stand.nom || 'Stand sans nom' }}</strong>
-                  <span v-if="stand.location" class="stand-location">📍 {{ stand.location }}</span>
+                  <span v-if="getStandLocationInMarket(stand, selectedMarket?.id)" class="stand-location">
+                    📍 {{ getStandLocationInMarket(stand, selectedMarket?.id) }}
+                  </span>
                 </div>
-                <button
-                  @click="removeStandFromMarket(stand.id)"
-                  class="btn-remove-stand"
-                  :disabled="savingStand"
-                >
+                <button @click="removeStandFromMarket(stand.id)" class="btn-remove-stand" :disabled="savingStand">
                   Retirer
                 </button>
               </div>
@@ -157,44 +131,24 @@
       <div class="modal-content" @click.stop>
         <button class="close-btn" @click="closeModal">×</button>
         <h2>{{ editingMarket ? 'Modifier le marché' : 'Nouveau marché' }}</h2>
-        
+
         <form @submit.prevent="saveMarket" class="market-form">
           <div class="form-group">
             <label>Nom du marché *</label>
-            <input
-              v-model="marketForm.name"
-              type="text"
-              required
-              placeholder="Ex: Marché Central"
-              :disabled="saving"
-            />
+            <input v-model="marketForm.name" type="text" required placeholder="Ex: Marché Central" :disabled="saving" />
           </div>
 
           <div class="form-group">
             <label>Lieu *</label>
-            <input
-              v-model="marketForm.place"
-              type="text"
-              required
-              placeholder="Ex: Place de la République, 75001 Paris"
-              :disabled="saving"
-            />
+            <input v-model="marketForm.place" type="text" required placeholder="Ex: Place de la République, 75001 Paris"
+              :disabled="saving" />
           </div>
 
           <div class="form-group">
             <label>Jours de marché *</label>
             <div class="days-selector">
-              <label
-                v-for="day in availableDays"
-                :key="day.value"
-                class="day-checkbox"
-              >
-                <input
-                  type="checkbox"
-                  :value="day.value"
-                  v-model="marketForm.days"
-                  :disabled="saving"
-                />
+              <label v-for="day in availableDays" :key="day.value" class="day-checkbox">
+                <input type="checkbox" :value="day.value" v-model="marketForm.days" :disabled="saving" />
                 <span>{{ day.label }}</span>
               </label>
             </div>
@@ -281,7 +235,7 @@ const loadMarkets = async () => {
 
   // Load from cache
   const cachedMarkets = await db.markets_cache.toArray()
-  markets.value = cachedMarkets.sort((a, b) => 
+  markets.value = cachedMarkets.sort((a, b) =>
     (a.data.name || '').localeCompare(b.data.name || '')
   )
 
@@ -414,7 +368,23 @@ const handleLogout = () => {
 }
 
 const getMarketStands = (marketId: string) => {
-  return vendors.value.filter(v => v.market_id === marketId)
+  return vendors.value.filter(v => {
+    const vendorMarkets = Array.isArray(v.vendor_markets) ? v.vendor_markets : []
+    return vendorMarkets.some((vm: any) => vm.market_id === marketId)
+  })
+}
+
+const isVendorInMarket = (vendor: any, marketId: string | undefined): boolean => {
+  if (!marketId) return false
+  const vendorMarkets = Array.isArray(vendor.vendor_markets) ? vendor.vendor_markets : []
+  return vendorMarkets.some((vm: any) => vm.market_id === marketId)
+}
+
+const getStandLocationInMarket = (stand: any, marketId: string | undefined): string | null => {
+  if (!marketId) return null
+  const vendorMarkets = Array.isArray(stand.vendor_markets) ? stand.vendor_markets : []
+  const marketAssociation = vendorMarkets.find((vm: any) => vm.market_id === marketId)
+  return marketAssociation?.location || null
 }
 
 const manageStands = async (market: MarketCache) => {
@@ -427,7 +397,7 @@ const manageStands = async (market: MarketCache) => {
     if (isOnline()) {
       await syncService.syncVendors()
     }
-    
+
     // Reload vendors from cache
     const cachedVendors = await db.vendors_cache.toArray()
     vendors.value = cachedVendors.map(v => v.data)
@@ -468,16 +438,33 @@ const assignStandToMarket = async () => {
       return
     }
 
-    const { error } = await supabase
-      .from('vendors')
-      .update({ market_id: selectedMarket.value.id })
-      .eq('id', selectedVendorId.value)
+    // Check if vendor is already in this market
+    const { data: existing } = await supabase
+      .from('vendor_markets')
+      .select('id')
+      .eq('vendor_id', selectedVendorId.value)
+      .eq('market_id', selectedMarket.value.id)
+      .maybeSingle()
 
-    if (error) throw error
+    if (existing) {
+      // Already associated, just update location if needed
+      console.log('Vendor already in this market')
+    } else {
+      // Create new association
+      const { error } = await supabase
+        .from('vendor_markets')
+        .insert({
+          vendor_id: selectedVendorId.value,
+          market_id: selectedMarket.value.id,
+          location: null // Can be set later
+        })
+
+      if (error) throw error
+    }
 
     // Refresh vendors cache
     await syncService.syncVendors()
-    
+
     // Reload vendors
     const cachedVendors = await db.vendors_cache.toArray()
     vendors.value = cachedVendors.map(v => v.data)
@@ -504,16 +491,24 @@ const removeStandFromMarket = async (vendorId: string) => {
       return
     }
 
+    // Remove vendor from this specific market (not all markets)
+    // We need to know which market to remove from - this should be passed as parameter
+    // For now, we'll remove from the selected market
+    if (!selectedMarket.value) {
+      throw new Error('Aucun marché sélectionné')
+    }
+
     const { error } = await supabase
-      .from('vendors')
-      .update({ market_id: null })
-      .eq('id', vendorId)
+      .from('vendor_markets')
+      .delete()
+      .eq('vendor_id', vendorId)
+      .eq('market_id', selectedMarket.value.id)
 
     if (error) throw error
 
     // Refresh vendors cache
     await syncService.syncVendors()
-    
+
     // Reload vendors
     const cachedVendors = await db.vendors_cache.toArray()
     vendors.value = cachedVendors.map(v => v.data)
@@ -1056,16 +1051,15 @@ onMounted(() => {
   .days-selector {
     grid-template-columns: 1fr;
   }
-  
+
   .header {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .section-header {
     flex-direction: column;
     align-items: flex-start;
   }
 }
 </style>
-
