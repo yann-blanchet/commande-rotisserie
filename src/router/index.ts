@@ -6,6 +6,8 @@ import TraderRegister from '../views/TraderRegister.vue'
 import TraderHome from '../views/TraderHome.vue'
 import TraderOrders from '../views/TraderOrders.vue'
 import TraderProducts from '../views/TraderProducts.vue'
+import TraderUser from '../views/TraderUser.vue'
+import TraderCurrentMarket from '../views/TraderCurrentMarket.vue'
 import Markets from '../views/Markets.vue'
 import AdminLogin from '../views/AdminLogin.vue'
 import AdminRegister from '../views/AdminRegister.vue'
@@ -56,6 +58,18 @@ const router = createRouter({
       path: '/trader/products',
       name: 'trader-products',
       component: TraderProducts,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/trader/user',
+      name: 'trader-user',
+      component: TraderUser,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/trader/current-market',
+      name: 'trader-current-market',
+      component: TraderCurrentMarket,
       meta: { requiresAuth: true }
     },
     {

@@ -207,6 +207,55 @@ export class SyncService {
   }
 
   /**
+   * Sync market sessions for a specific vendor
+   */
+  async syncMarketSessions(vendorId: string): Promise<void> {
+    if (!isOnline()) {
+      console.log('Offline: Using cached market sessions')
+      return
+    }
+
+    try {
+      // Get all markets for this vendor
+      const { data: vendor, error: vendorError } = await supabase
+        .from('vendors')
+        .select('vendor_markets(market_id)')
+        .eq('id', vendorId)
+        .maybeSingle()
+
+      if (vendorError) throw vendorError
+      if (!vendor) return
+
+      const vendorMarkets = Array.isArray(vendor.vendor_markets) ? vendor.vendor_markets : []
+      const marketIds = vendorMarkets.map((vm: any) => vm.market_id).filter((id: any) => id)
+
+      if (marketIds.length === 0) return
+
+      // Get all active sessions for these markets
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('market_sessions')
+        .select('*')
+        .in('market_id', marketIds)
+        .eq('is_active', true)
+
+      if (sessionsError) throw sessionsError
+
+      if (sessions) {
+        for (const session of sessions) {
+          await db.market_sessions_cache.put({
+            id: session.id,
+            market_id: session.market_id,
+            data: session,
+            updated_at: new Date().toISOString()
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing market sessions:', error)
+    }
+  }
+
+  /**
    * Initialize sync on app start
    */
   async initializeSync(): Promise<void> {

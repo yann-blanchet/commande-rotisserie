@@ -108,25 +108,42 @@
     </div>
 
     <div v-else class="orders-list">
-      <!-- Sélecteur de marché pour filtrer les commandes -->
-      <div v-if="standMarkets && standMarkets.length > 1" class="market-filter-section">
-        <div class="filter-header">
-          <span class="filter-icon">🏪</span>
-          <label class="filter-label">Filtrer par marché:</label>
-        </div>
-        <select v-model="selectedMarketFilter" @change="filterOrdersByMarket" class="market-select">
+      <!-- Market selector -->
+      <div v-if="standMarkets && standMarkets.length > 0" class="market-selector-section">
+        <label class="selector-label">Sélectionner un marché:</label>
+        <select v-model="selectedMarketId" @change="onMarketChange" class="market-selector">
           <option value="">Tous les marchés</option>
           <option v-for="market in standMarkets" :key="market.id" :value="market.id">
             {{ market.name }} - {{ market.place }}
           </option>
         </select>
       </div>
-      
-      <div v-if="selectedMarketFilter && standMarkets" class="current-market-badge">
-        <span class="badge-icon">📊</span>
-        <span>Commandes pour: <strong>{{ getMarketName(selectedMarketFilter) }}</strong></span>
+
+      <!-- Market info and next market day -->
+      <div v-if="selectedMarket && selectedMarket.markets" class="market-info-section">
+        <div class="market-header-card">
+          <div class="market-header-content">
+            <div class="market-title-section">
+              <h3 class="market-title">
+                <span class="market-icon">🏪</span>
+                {{ selectedMarket.markets.name }}
+              </h3>
+              <p v-if="selectedMarket.markets.place" class="market-place">
+                <span class="place-icon">📍</span>
+                {{ selectedMarket.markets.place }}
+              </p>
+            </div>
+            <div v-if="nextMarketDateDisplay" class="next-market-day">
+              <span class="date-icon">📅</span>
+              <div class="date-info">
+                <span class="date-label">Prochain marché:</span>
+                <span class="date-value">{{ nextMarketDateDisplay }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      
+
       <div class="orders-grid">
         <div v-for="order in orders" :key="order.id" class="order-card" :class="{ 'picked-up': order.data.picked_up }">
           <div class="order-card-header">
@@ -156,7 +173,7 @@
               </span>
             </div>
           </div>
-          
+
           <div class="order-product-section">
             <span class="product-icon">📦</span>
             <div class="product-info">
@@ -164,7 +181,7 @@
               <span class="product-name">{{ getProductName(order.data.product_id) }}</span>
             </div>
           </div>
-          
+
           <div class="order-actions" v-if="!order.data.picked_up">
             <button @click="markAsPickedUp(order)" class="btn-mark-picked">
               <span class="btn-icon">✓</span>
@@ -212,7 +229,8 @@
           </div>
 
           <div class="form-hint">
-            <small>💡 Pour modifier l'emplacement dans un marché, utilisez le bouton "Ajouter un marché" depuis la page Mes Stands</small>
+            <small>💡 Pour modifier l'emplacement dans un marché, utilisez le bouton "Ajouter un marché" depuis la page
+              Mes Stands</small>
           </div>
 
           <div class="form-actions">
@@ -226,6 +244,8 @@
         </form>
       </div>
     </div>
+
+    <BottomMenuBar />
   </div>
 </template>
 
@@ -236,6 +256,7 @@ import { db } from '../db/database'
 import { syncService } from '../services/syncService'
 import { supabase, isOnline } from '../lib/supabase'
 import type { OrderCache, ProductCache } from '../db/database'
+import BottomMenuBar from '../components/BottomMenuBar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -254,7 +275,9 @@ const availableMarkets = ref<any[]>([])
 const loadingMarkets = ref(false)
 const error = ref<string | null>(null)
 const standMarkets = ref<any[]>([]) // Marchés associés au stand
-const selectedMarketFilter = ref<string>('') // Marché sélectionné pour filtrer
+const selectedMarket = ref<any>(null) // Marché sélectionné depuis l'URL
+const selectedMarketId = ref<string>('') // ID du marché sélectionné dans le sélecteur
+const nextMarketDateDisplay = ref<string | null>(null) // Prochain jour de marché formaté
 const standForm = ref({
   nom: '',
   description: '',
@@ -348,16 +371,53 @@ const loadOrders = async () => {
         // Handle vendor_markets (array of market associations)
         const vendorMarkets = Array.isArray(vendor.vendor_markets) ? vendor.vendor_markets : []
         const firstMarket = vendorMarkets.length > 0 ? vendorMarkets[0].markets : null
-        
-        // Charger les marchés associés au stand pour le filtre
+
+        // Charger les marchés associés au stand
         standMarkets.value = vendorMarkets
           .map((vm: any) => vm.markets)
           .filter((m: any) => m)
-        
-        // Initialiser le filtre depuis l'URL si présent
+
+        // Trouver le marché sélectionné depuis l'URL
         const marketIdFromUrl = route.query.market as string | undefined
         if (marketIdFromUrl) {
-          selectedMarketFilter.value = marketIdFromUrl
+          const foundMarket = vendorMarkets.find((vm: any) => vm.market_id === marketIdFromUrl)
+          if (foundMarket) {
+            selectedMarket.value = foundMarket
+            // Calculer le prochain jour de marché
+            if (foundMarket.markets && foundMarket.markets.days) {
+              const nextDate = calculateNextMarketDate(foundMarket.markets.days)
+              if (nextDate) {
+                nextMarketDateDisplay.value = formatMarketDate(nextDate)
+              }
+            } else {
+              // Si les données du marché ne sont pas complètes, charger depuis le cache
+              const cachedMarket = await db.markets_cache.get(marketIdFromUrl)
+              if (cachedMarket && cachedMarket.data.days) {
+                const nextDate = calculateNextMarketDate(cachedMarket.data.days)
+                if (nextDate) {
+                  nextMarketDateDisplay.value = formatMarketDate(nextDate)
+                }
+              }
+            }
+          }
+        } else if (vendorMarkets.length > 0) {
+          // Si pas de marché dans l'URL, utiliser le premier
+          selectedMarket.value = vendorMarkets[0]
+          if (vendorMarkets[0].markets && vendorMarkets[0].markets.days) {
+            const nextDate = calculateNextMarketDate(vendorMarkets[0].markets.days)
+            if (nextDate) {
+              nextMarketDateDisplay.value = formatMarketDate(nextDate)
+            }
+          } else {
+            // Si les données du marché ne sont pas complètes, charger depuis le cache
+            const cachedMarket = await db.markets_cache.get(vendorMarkets[0].market_id)
+            if (cachedMarket && cachedMarket.data.days) {
+              const nextDate = calculateNextMarketDate(cachedMarket.data.days)
+              if (nextDate) {
+                nextMarketDateDisplay.value = formatMarketDate(nextDate)
+              }
+            }
+          }
         }
 
         console.log('Vendor markets:', vendorMarkets)
@@ -484,7 +544,56 @@ const loadOrders = async () => {
         const cachedVendorMarkets = Array.isArray(cachedVendor.data.vendor_markets) ? cachedVendor.data.vendor_markets : []
         const cachedLocation = cachedVendorMarkets.length > 0 ? cachedVendorMarkets[0].location : (cachedVendor.data.location || '')
         const cachedMarketId = cachedVendorMarkets.length > 0 ? cachedVendorMarkets[0].market_id : (cachedVendor.data.market_id || '')
-        
+
+        // Initialiser le sélecteur de marché depuis l'URL (offline)
+        const marketIdFromUrl = route.query.market as string | undefined
+        if (marketIdFromUrl && cachedVendorMarkets.length > 0) {
+          selectedMarketId.value = marketIdFromUrl
+          const foundMarket = cachedVendorMarkets.find((vm: any) => vm.market_id === marketIdFromUrl)
+          if (foundMarket) {
+            // Charger les données complètes du marché depuis le cache si nécessaire
+            let marketData = foundMarket.markets
+            if (!marketData || !marketData.days) {
+              const cachedMarket = await db.markets_cache.get(marketIdFromUrl)
+              if (cachedMarket) {
+                marketData = cachedMarket.data
+              }
+            }
+            selectedMarket.value = {
+              ...foundMarket,
+              markets: marketData || foundMarket.markets
+            }
+            // Calculer le prochain jour de marché si disponible
+            if (marketData && marketData.days) {
+              const nextDate = calculateNextMarketDate(marketData.days)
+              if (nextDate) {
+                nextMarketDateDisplay.value = formatMarketDate(nextDate)
+              }
+            }
+          }
+        } else if (cachedVendorMarkets.length > 0) {
+          // Si pas de marché dans l'URL, utiliser le premier
+          selectedMarketId.value = cachedVendorMarkets[0].market_id
+          const firstMarket = cachedVendorMarkets[0]
+          let marketData = firstMarket.markets
+          if (!marketData || !marketData.days) {
+            const cachedMarket = await db.markets_cache.get(firstMarket.market_id)
+            if (cachedMarket) {
+              marketData = cachedMarket.data
+            }
+          }
+          selectedMarket.value = {
+            ...firstMarket,
+            markets: marketData || firstMarket.markets
+          }
+          if (marketData && marketData.days) {
+            const nextDate = calculateNextMarketDate(marketData.days)
+            if (nextDate) {
+              nextMarketDateDisplay.value = formatMarketDate(nextDate)
+            }
+          }
+        }
+
         standForm.value = {
           nom: standNom,
           description: standDescription,
@@ -493,7 +602,7 @@ const loadOrders = async () => {
         }
         // Check onboarding status (offline mode)
         const hasStandName = standNom && standNom.trim() !== ''
-        const hasMarket = cachedVendor.data.market_id !== null && cachedVendor.data.market_id !== undefined
+        const hasMarket = cachedVendorMarkets.length > 0 || (cachedVendor.data.market_id !== null && cachedVendor.data.market_id !== undefined)
 
         if (!hasStandName) {
           console.log('Showing onboarding step 1 (offline)')
@@ -523,10 +632,17 @@ const loadOrders = async () => {
     }
 
     // Load from cache
-    const cachedOrders = await db.orders_cache
+    let cachedOrders = await db.orders_cache
       .where('vendor_id')
       .equals(vendorId)
       .toArray()
+
+    // Filtrer par marché si un marché est sélectionné
+    if (selectedMarketId.value) {
+      cachedOrders = cachedOrders.filter(order =>
+        order.data.market_id === selectedMarketId.value
+      )
+    }
 
     orders.value = cachedOrders.sort((a, b) =>
       new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime()
@@ -773,7 +889,7 @@ const openEditModal = async () => {
         // Get stand name/description from vendor (stand_nom/stand_description now in vendors table)
         const standNom = cachedVendor.data.profiles?.stand_nom || cachedVendor.data.stand_nom || ''
         const standDescription = cachedVendor.data.profiles?.stand_description || cachedVendor.data.stand_description || ''
-        
+
         standForm.value = {
           nom: standNom,
           description: standDescription,
@@ -791,7 +907,7 @@ const closeEditModal = () => {
   if (vendorInfo.value) {
     const standNom = vendorInfo.value.profiles?.stand_nom || vendorInfo.value.stand_nom || ''
     const standDescription = vendorInfo.value.profiles?.stand_description || vendorInfo.value.stand_description || ''
-    
+
     standForm.value = {
       nom: standNom,
       description: standDescription,
@@ -861,31 +977,90 @@ const handleLogout = async () => {
   router.push('/trader/login')
 }
 
-// Filtrer les commandes par marché
-const filterOrdersByMarket = () => {
-  if (selectedMarketFilter.value) {
-    router.push({
-      path: '/trader/orders',
-      query: {
-        stand: traderVendorId.value,
-        market: selectedMarketFilter.value
-      }
-    })
-  } else {
-    router.push({
-      path: '/trader/orders',
-      query: {
-        stand: traderVendorId.value
-      }
-    })
+// Calculate next market date based on market days
+const calculateNextMarketDate = (marketDays: string[]): Date | null => {
+  if (!marketDays || marketDays.length === 0) {
+    return null
   }
-  loadOrders()
+
+  const dayMap: Record<string, number> = {
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+    'sunday': 0
+  }
+
+  const today = new Date()
+  const currentDay = today.getDay()
+
+  // Get market day numbers (filter out undefined values)
+  const marketDayNumbers = marketDays
+    .map(day => dayMap[day.toLowerCase()])
+    .filter((dayNum): dayNum is number => dayNum !== undefined)
+    .sort((a, b) => a - b)
+
+  // Find next market day
+  for (const dayNum of marketDayNumbers) {
+    if (dayNum > currentDay) {
+      // Market day is later this week
+      const daysUntil = dayNum - currentDay
+      const nextDate = new Date(today)
+      nextDate.setDate(today.getDate() + daysUntil)
+      return nextDate
+    }
+  }
+
+  // If no market day found this week, get the first one next week
+  if (marketDayNumbers.length > 0) {
+    const firstDayNum = marketDayNumbers[0]
+    if (firstDayNum !== undefined) {
+      const daysUntil = 7 - currentDay + firstDayNum
+      const nextDate = new Date(today)
+      nextDate.setDate(today.getDate() + daysUntil)
+      return nextDate
+    }
+  }
+
+  return null
 }
 
-// Obtenir le nom d'un marché
-const getMarketName = (marketId: string): string => {
-  const market = standMarkets.value.find((m: any) => m.id === marketId)
-  return market ? `${market.name} - ${market.place}` : 'Marché inconnu'
+const formatMarketDate = (date: Date): string => {
+  return new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(date)
+}
+
+const onMarketChange = () => {
+  if (selectedMarketId.value) {
+    const foundMarket = standMarkets.value.find((m: any) => m.id === selectedMarketId.value)
+    if (foundMarket) {
+      // Find the vendor_market association
+      const vendorMarkets = Array.isArray(vendorInfo.value?.vendor_markets) ? vendorInfo.value.vendor_markets : []
+      const marketAssociation = vendorMarkets.find((vm: any) => vm.market_id === selectedMarketId.value)
+      if (marketAssociation) {
+        selectedMarket.value = marketAssociation
+        // Calculate next market date
+        if (marketAssociation.markets && marketAssociation.markets.days) {
+          const nextDate = calculateNextMarketDate(marketAssociation.markets.days)
+          if (nextDate) {
+            nextMarketDateDisplay.value = formatMarketDate(nextDate)
+          }
+        }
+      }
+    }
+    // Reload orders with filter
+    loadOrders()
+  } else {
+    selectedMarket.value = null
+    nextMarketDateDisplay.value = null
+    loadOrders()
+  }
 }
 
 // Auto-refresh when coming online
@@ -912,6 +1087,46 @@ onUnmounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
+  padding-bottom: 80px;
+  /* Space for bottom menu */
+}
+
+.market-selector-section {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.selector-label {
+  display: block;
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.market-selector {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.market-selector:hover {
+  border-color: #cbd5e1;
+}
+
+.market-selector:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .header {
@@ -1025,68 +1240,90 @@ onUnmounted(() => {
   margin-top: 20px;
 }
 
-.market-filter-section {
+.market-info-section {
+  margin-bottom: 20px;
+}
+
+.market-header-card {
   background: white;
   border: 2px solid #e2e8f0;
   border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.filter-header {
+.market-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.market-title-section {
+  flex: 1;
+  min-width: 200px;
+}
+
+.market-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.market-icon {
+  font-size: 1.8rem;
+}
+
+.market-place {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-}
-
-.filter-icon {
-  font-size: 1.3rem;
-}
-
-.filter-label {
-  font-weight: 600;
-  color: #334155;
+  margin: 0;
+  color: #64748b;
   font-size: 0.95rem;
 }
 
-.market-select {
-  width: 100%;
-  padding: 10px 14px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.place-icon {
+  font-size: 1.1rem;
 }
 
-.market-select:hover {
-  border-color: #cbd5e1;
-}
-
-.market-select:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.current-market-badge {
+.next-market-day {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 12px 16px;
   background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
   border: 2px solid #93c5fd;
   border-radius: 10px;
-  margin-bottom: 16px;
-  font-size: 0.95rem;
-  color: #1e40af;
+  min-width: 250px;
 }
 
-.badge-icon {
-  font-size: 1.2rem;
+.date-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.date-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-label {
+  font-size: 0.85rem;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.date-value {
+  font-size: 1rem;
+  color: #1e3a8a;
+  font-weight: 700;
 }
 
 .orders-grid {

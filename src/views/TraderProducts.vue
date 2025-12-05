@@ -1,27 +1,10 @@
 <template>
     <div class="trader-products">
-        <header class="header">
-            <h1>🍗 Gestion des Produits</h1>
-            <div class="header-actions">
-                <router-link to="/trader/home" class="btn-home">🏠 Mes Stands</router-link>
-                <button @click="goToOrders" class="btn-secondary">Mes Commandes</button>
-                <button @click="handleLogout" class="logout-btn">Déconnexion</button>
-            </div>
-        </header>
-
-        <div class="status-bar">
-            <span :class="['status-indicator', isOnline() ? 'online' : 'offline']">
-                {{ isOnline() ? '🟢 En ligne' : '🔴 Hors ligne' }}
-            </span>
-            <button @click="refreshProducts" class="refresh-btn" :disabled="!isOnline()">
-                Actualiser
-            </button>
-        </div>
+        <TraderHeader title="Produits" />
 
         <!-- Products List -->
         <div class="products-section">
             <div class="section-header">
-                <h2>Produits disponibles</h2>
                 <button @click="showAddProduct = true" class="btn-add">
                     + Ajouter un produit
                 </button>
@@ -133,6 +116,8 @@
                 </form>
             </div>
         </div>
+
+        <BottomMenuBar />
     </div>
 </template>
 
@@ -143,6 +128,8 @@ import { db } from '../db/database'
 import { syncService } from '../services/syncService'
 import { supabase, isOnline } from '../lib/supabase'
 import type { ProductCache } from '../db/database'
+import BottomMenuBar from '../components/BottomMenuBar.vue'
+import TraderHeader from '../components/TraderHeader.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -235,13 +222,6 @@ const loadData = async () => {
         console.error('Error loading data:', error)
     } finally {
         loading.value = false
-    }
-}
-
-const refreshProducts = async () => {
-    if (isOnline() && traderVendorId.value) {
-        await syncService.syncProducts(traderVendorId.value)
-        await loadData()
     }
 }
 
@@ -406,15 +386,6 @@ const formatDate = (dateString: string) => {
     }).format(date)
 }
 
-const goToOrders = () => {
-    router.push('/trader/orders')
-}
-
-const handleLogout = () => {
-    localStorage.removeItem('trader_session')
-    router.push('/trader/login')
-}
-
 onMounted(() => {
     loadData()
 })
@@ -425,66 +396,8 @@ onMounted(() => {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.header h1 {
-    font-size: 2rem;
-    margin: 0;
-}
-
-.header-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding: 15px;
-    background: #f9f9f9;
-    border-radius: 8px;
-}
-
-.status-indicator {
-    font-weight: 600;
-}
-
-.status-indicator.online {
-    color: #4caf50;
-}
-
-.status-indicator.offline {
-    color: #f44336;
-}
-
-.refresh-btn {
-    padding: 8px 16px;
-    background: #ff6b35;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.refresh-btn:hover:not(:disabled) {
-    background: #e55a2b;
-}
-
-.refresh-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+    padding-bottom: 80px;
+    /* Space for bottom menu */
 }
 
 .products-section {
@@ -806,44 +719,9 @@ onMounted(() => {
     cursor: not-allowed;
 }
 
-.btn-home {
-    padding: 10px 20px;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-}
-
-.btn-home:hover {
-    background: var(--color-primary-hover);
-}
-
-.logout-btn {
-    padding: 10px 20px;
-    background: #f0f0f0;
-    color: #333;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.logout-btn:hover {
-    background: #e0e0e0;
-}
-
 @media (max-width: 768px) {
     .form-row {
         grid-template-columns: 1fr;
-    }
-
-    .header {
-        flex-direction: column;
-        align-items: flex-start;
     }
 
     .section-header {

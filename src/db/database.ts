@@ -50,6 +50,21 @@ export interface MarketCache {
   updated_at: string
 }
 
+export interface MarketSessionCache {
+  id: string
+  market_id: string
+  data: {
+    id: string
+    market_id: string
+    date: string
+    order_closure_date: string
+    is_active: boolean
+    created_at?: string
+    updated_at?: string
+  }
+  updated_at: string
+}
+
 export class RotisserieDatabase extends Dexie {
   favorites!: Table<Favorite>
   offline_orders!: Table<OfflineOrder>
@@ -57,16 +72,18 @@ export class RotisserieDatabase extends Dexie {
   products_cache!: Table<ProductCache>
   orders_cache!: Table<OrderCache>
   markets_cache!: Table<MarketCache>
+  market_sessions_cache!: Table<MarketSessionCache>
 
   constructor() {
     super('RotisserieDB')
-    this.version(2).stores({
+    this.version(3).stores({
       favorites: '++id, stand, nomDuStand',
       offline_orders: '++id_temporaire, vendor_id, product_id, sync_status, created_at',
       vendors_cache: 'id, updated_at',
       products_cache: 'id, vendor_id, updated_at',
       orders_cache: 'id, vendor_id, updated_at',
-      markets_cache: 'id, updated_at'
+      markets_cache: 'id, updated_at',
+      market_sessions_cache: 'id, market_id, updated_at'
     })
   }
 }

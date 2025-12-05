@@ -1,20 +1,6 @@
 <template>
   <div class="trader-home">
-    <header class="header">
-      <h1>🍗 Mes Stands</h1>
-      <div class="header-actions">
-        <button @click="handleLogout" class="logout-btn">Déconnexion</button>
-      </div>
-    </header>
-
-    <div class="status-bar">
-      <span :class="['status-indicator', isOnline() ? 'online' : 'offline']">
-        {{ isOnline() ? '🟢 En ligne' : '🔴 Hors ligne' }}
-      </span>
-      <button @click="loadStands" class="refresh-btn" :disabled="!isOnline() || loading">
-        Actualiser
-      </button>
-    </div>
+    <TraderHeader title="🍗 Mes Stands" />
 
     <div v-if="loading" class="loading">Chargement...</div>
 
@@ -31,10 +17,6 @@
             <h2 class="stand-title">{{ stand.stand_nom || 'Mon Stand' }}</h2>
             <p v-if="stand.stand_description" class="stand-description">{{ stand.stand_description }}</p>
           </div>
-          <button @click="openEditStandModal" class="btn-edit-stand">
-            <span class="edit-icon">✏️</span>
-            <span>Éditer</span>
-          </button>
         </div>
       </div>
 
@@ -50,37 +32,42 @@
             Ajouter un marché
           </button>
         </div>
-        
+
         <div v-if="stand.markets && stand.markets.length > 0" class="markets-grid">
           <div v-for="(market, index) in stand.markets" :key="market.id || index" class="market-card">
             <div class="market-card-header">
               <div class="market-icon">🏪</div>
-              <h4 class="market-name">{{ market.name }}</h4>
-            </div>
-            
-            <div class="market-details">
-              <div class="market-detail-item" v-if="market.place">
-                <span class="detail-icon">📍</span>
-                <span class="detail-text">{{ market.place }}</span>
+              <div class="market-header-content">
+                <h4 class="market-name">{{ market.name }}</h4>
+                <p v-if="market.place" class="market-place">
+                  <span class="place-icon">📍</span>
+                  <span class="place-text">{{ market.place }}</span>
+                </p>
               </div>
-              
-              <div class="market-detail-item location-item" v-if="getStandLocationInMarket(stand, market.id)">
-                <span class="detail-icon">📍</span>
-                <span class="detail-label">Emplacement:</span>
-                <span class="detail-text highlight">{{ getStandLocationInMarket(stand, market.id) }}</span>
-                <button @click="editMarketLocation(stand, market)" class="btn-edit-location-inline" :disabled="!isOnline()" title="Modifier l'emplacement">
+              <div v-if="getStandLocationInMarket(stand, market.id)" class="market-location-inline">
+                <span class="location-separator">•</span>
+                <span class="location-text">{{ getStandLocationInMarket(stand, market.id) }}</span>
+                <button @click="editMarketLocation(stand, market)" class="btn-edit-location-inline"
+                  :disabled="!isOnline()" title="Modifier l'emplacement">
                   <span class="edit-icon-small">✏️</span>
                 </button>
               </div>
-              
+            </div>
+
+            <div class="market-details">
+
               <div class="market-detail-item next-market" v-if="getNextMarketDate(market)">
                 <span class="detail-icon">📅</span>
                 <span class="detail-label">Prochain marché:</span>
                 <span class="detail-text date-text">{{ getNextMarketDate(market) }}</span>
               </div>
             </div>
-            
+
             <div class="market-actions">
+              <button v-if="!hasActiveSessionForMarket(market.id)" @click="startMarketSession(market)"
+                class="btn-start-commands" :disabled="!isOnline()">
+                🚀 Commencer les commandes
+              </button>
               <router-link :to="`/trader/orders?stand=${stand.id}&market=${market.id}`" class="btn-orders">
                 <span>Voir les commandes</span>
                 <span class="arrow">→</span>
@@ -88,7 +75,7 @@
             </div>
           </div>
         </div>
-        
+
         <div v-else class="no-markets">
           <div class="no-markets-icon">🏪</div>
           <p class="no-markets-title">Aucun marché associé</p>
@@ -96,13 +83,6 @@
         </div>
       </div>
 
-      <!-- Stand actions -->
-      <div class="stand-actions-section">
-        <router-link :to="`/trader/products?stand=${stand.id}`" class="btn-manage-products">
-          <span class="products-icon">📦</span>
-          <span>Gérer les produits</span>
-        </router-link>
-      </div>
     </div>
 
     <div v-else class="empty-state">
@@ -223,17 +203,14 @@
       <div class="modal-content" @click.stop>
         <button class="close-btn" @click="closeAddMarketModal">×</button>
         <h2>Ajouter un marché à "{{ selectedStandForMarket?.stand_nom || 'ce stand' }}"</h2>
-        
+
         <form @submit.prevent="addMarketToStand" class="stand-form">
           <div class="form-group">
             <label>Marché *</label>
-            <select v-model="newMarketForm.market_id" class="form-select" required :disabled="creating || loadingMarkets">
+            <select v-model="newMarketForm.market_id" class="form-select" required
+              :disabled="creating || loadingMarkets">
               <option value="">Sélectionnez un marché</option>
-              <option 
-                v-for="market in availableMarketsForStand" 
-                :key="market.id" 
-                :value="market.id"
-              >
+              <option v-for="market in availableMarketsForStand" :key="market.id" :value="market.id">
                 {{ market.name }} - {{ market.place }}
               </option>
             </select>
@@ -241,12 +218,8 @@
 
           <div class="form-group">
             <label>Emplacement dans le marché</label>
-            <input 
-              v-model="newMarketForm.location" 
-              type="text" 
-              placeholder="Ex: Allée A, Stand 12"
-              :disabled="creating || !newMarketForm.market_id" 
-            />
+            <input v-model="newMarketForm.location" type="text" placeholder="Ex: Allée A, Stand 12"
+              :disabled="creating || !newMarketForm.market_id" />
             <small class="form-hint">Indiquez où se trouve votre stand dans ce marché</small>
           </div>
 
@@ -265,6 +238,8 @@
         </form>
       </div>
     </div>
+
+    <BottomMenuBar />
   </div>
 </template>
 
@@ -274,6 +249,8 @@ import { useRouter } from 'vue-router'
 import { supabase, isOnline } from '../lib/supabase'
 import { syncService } from '../services/syncService'
 import { db } from '../db/database'
+import BottomMenuBar from '../components/BottomMenuBar.vue'
+import TraderHeader from '../components/TraderHeader.vue'
 
 const router = useRouter()
 const stand = ref<any>(null) // Un seul stand par trader
@@ -286,6 +263,7 @@ const loadingMarkets = ref(false)
 const onboardingStep = ref(1)
 const selectedMarkets = ref<string[]>([])
 const marketLocations = ref<Record<string, string>>({})
+const marketsWithActiveSessions = ref<string[]>([]) // IDs des marchés avec sessions actives
 const newStandForm = ref({
   nom: '',
   description: ''
@@ -396,14 +374,14 @@ const loadStands = async () => {
           const v = vendors[0]
           const vendorMarkets = Array.isArray(v.vendor_markets) ? v.vendor_markets : []
           const markets = vendorMarkets.map((vm: any) => vm.markets).filter((m: any) => m) // Flatten markets array
-          
+
           console.log('Stand loaded:', {
             vendorId: v.id,
             vendorMarkets,
             markets,
             marketsLength: markets.length
           })
-          
+
           stand.value = {
             ...v,
             stand_nom: v.stand_nom || v.profiles?.stand_nom || null,
@@ -411,6 +389,19 @@ const loadStands = async () => {
             vendor_markets: vendorMarkets,
             markets: markets
           }
+
+          // Load active sessions for markets
+          const marketIds = markets.map((m: any) => m.id)
+          if (marketIds.length > 0) {
+            const { data: activeSessions } = await supabase
+              .from('market_sessions')
+              .select('market_id')
+              .eq('is_active', true)
+              .in('market_id', marketIds)
+
+            marketsWithActiveSessions.value = activeSessions?.map((s: any) => s.market_id) || []
+          }
+
           error.value = null
         } else {
           console.log('No stand found for this profile - will show create stand form')
@@ -504,19 +495,170 @@ const getNextMarketDate = (market: any): string | null => {
   return null
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('trader_session')
-  router.push('/trader/login')
+
+// Vérifier si un marché a une session active
+const hasActiveSessionForMarket = (marketId: string): boolean => {
+  return marketsWithActiveSessions.value.includes(marketId)
 }
 
-// Get stand location from vendor_markets (first market's location)
-const getStandLocation = (stand: any): string | null => {
-  const vendorMarkets = Array.isArray(stand.vendor_markets) ? stand.vendor_markets : []
-  if (vendorMarkets.length > 0 && vendorMarkets[0].location) {
-    return vendorMarkets[0].location
+// Fonction pour créer automatiquement une session et rediriger
+const startMarketSession = async (market: any) => {
+  if (!isOnline()) {
+    alert('Vous devez être en ligne pour créer une session')
+    return
   }
-  // Fallback for backward compatibility
-  return stand.location || null
+
+  try {
+    const sessionStr = localStorage.getItem('trader_session')
+    if (!sessionStr) {
+      router.push('/trader/login')
+      return
+    }
+
+    const session = JSON.parse(sessionStr)
+    if (!session.authenticated || !session.profile_id) {
+      alert('Session invalide')
+      return
+    }
+
+    // Calculer la prochaine date de marché
+    const nextDate = calculateNextMarketDate(market.days || [])
+    if (!nextDate) {
+      alert('Impossible de calculer la date du marché')
+      return
+    }
+
+    const marketDate = nextDate.toISOString().split('T')[0]
+
+    // Synchroniser les sessions avant de vérifier
+    if (session.vendor_id) {
+      await syncService.syncMarketSessions(session.vendor_id)
+    }
+
+    // Vérifier d'abord dans le cache local
+    const cachedSessions = await db.market_sessions_cache
+      .where('market_id')
+      .equals(market.id)
+      .toArray()
+
+    const matchingSession = cachedSessions.find(
+      (s: any) => s.data.date === marketDate && s.data.is_active === true
+    )
+
+    if (matchingSession) {
+      router.push(`/trader/current-market?session=${matchingSession.id}`)
+      return
+    }
+
+    // Vérifier aussi en ligne si disponible
+    if (isOnline()) {
+      const { data: existingSession, error: checkError } = await supabase
+        .from('market_sessions')
+        .select('id')
+        .eq('market_id', market.id)
+        .eq('date', marketDate)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (checkError) throw checkError
+
+      // Si une session existe déjà, rediriger vers elle
+      if (existingSession) {
+        router.push(`/trader/current-market?session=${existingSession.id}`)
+        return
+      }
+    }
+
+    // Date de fermeture : veille à 20h
+    const closureDate = new Date(nextDate)
+    closureDate.setDate(closureDate.getDate() - 1)
+    closureDate.setHours(20, 0, 0, 0)
+    const closureDateTime = closureDate.toISOString()
+
+    // Créer la session
+    const { data: newSession, error: createError } = await supabase
+      .from('market_sessions')
+      .insert({
+        market_id: market.id,
+        date: marketDate,
+        order_closure_date: closureDateTime,
+        is_active: true
+      })
+      .select('id')
+      .single()
+
+    if (createError) {
+      // Si l'erreur est due à une contrainte unique, vérifier à nouveau et rediriger
+      if (createError.code === '23505' || createError.message?.includes('duplicate key')) {
+        // Synchroniser les sessions pour mettre à jour le cache
+        if (session.vendor_id) {
+          await syncService.syncMarketSessions(session.vendor_id)
+        }
+
+        // Chercher dans le cache
+        const cachedSessionsAfterError = await db.market_sessions_cache
+          .where('market_id')
+          .equals(market.id)
+          .toArray()
+
+        const matchingSessionAfterError = cachedSessionsAfterError.find(
+          (s: any) => s.data.date === marketDate && s.data.is_active === true
+        )
+
+        if (matchingSessionAfterError) {
+          router.push(`/trader/current-market?session=${matchingSessionAfterError.id}`)
+          return
+        }
+
+        // Si pas dans le cache, chercher en ligne
+        if (isOnline()) {
+          const { data: existingSession2 } = await supabase
+            .from('market_sessions')
+            .select('id')
+            .eq('market_id', market.id)
+            .eq('date', marketDate)
+            .eq('is_active', true)
+            .maybeSingle()
+
+          if (existingSession2) {
+            router.push(`/trader/current-market?session=${existingSession2.id}`)
+            return
+          }
+        }
+      }
+      throw createError
+    }
+
+    // Mettre à jour le cache avec la nouvelle session
+    if (newSession && newSession.id && marketDate && closureDateTime) {
+      const sessionId = String(newSession.id)
+      await db.market_sessions_cache.put({
+        id: sessionId,
+        market_id: market.id,
+        data: {
+          id: sessionId,
+          market_id: market.id,
+          date: marketDate,
+          order_closure_date: closureDateTime,
+          is_active: true
+        },
+        updated_at: new Date().toISOString()
+      })
+    }
+
+    // Rafraîchir les sessions actives
+    await loadStands()
+
+    // Rediriger vers TraderCurrentMarket avec la nouvelle session
+    if (newSession) {
+      router.push(`/trader/current-market?session=${newSession.id}`)
+    } else {
+      router.push('/trader/current-market')
+    }
+  } catch (err: any) {
+    console.error('Error starting market session:', err)
+    alert('Erreur lors de la création de la session: ' + (err.message || 'Erreur inconnue'))
+  }
 }
 
 // Get stand location for a specific market
@@ -527,10 +669,6 @@ const getStandLocationInMarket = (stand: any, marketId: string | undefined): str
   return marketAssociation?.location || null
 }
 
-// Ouvrir le modal d'édition du stand
-const openEditStandModal = () => {
-  router.push(`/trader/orders?stand=${stand.value?.id}`)
-}
 
 // Éditer l'emplacement d'un marché
 const editMarketLocation = (stand: any, market: any) => {
@@ -562,7 +700,7 @@ const updateMarketLocation = async (vendorId: string, marketId: string, location
         .eq('id', vendorMarket.id)
 
       if (error) throw error
-      
+
       // Rafraîchir
       await syncService.syncVendors()
       await loadStands()
@@ -595,13 +733,13 @@ const loadMarkets = async () => {
 // Computed pour obtenir les marchés disponibles pour un stand (excluant ceux déjà associés)
 const availableMarketsForStand = computed(() => {
   if (!selectedStandForMarket.value) return markets.value
-  
+
   const associatedMarketIds = new Set(
     (selectedStandForMarket.value.vendor_markets || [])
       .map((vm: any) => vm.market_id)
       .filter((id: any) => id)
   )
-  
+
   return markets.value.filter(m => !associatedMarketIds.has(m.id))
 })
 
@@ -790,7 +928,7 @@ const openAddMarketModal = async (stand: any) => {
     alert('Vous devez être en ligne pour ajouter un marché')
     return
   }
-  
+
   selectedStandForMarket.value = stand
   newMarketForm.value = {
     market_id: '',
@@ -798,7 +936,7 @@ const openAddMarketModal = async (stand: any) => {
   }
   addMarketError.value = null
   showAddMarketModal.value = true
-  
+
   // Charger les marchés si pas encore chargés
   if (markets.value.length === 0) {
     await loadMarkets()
@@ -922,95 +1060,8 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 16px 0;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.header h1 {
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.status-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.status-indicator {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.status-indicator.online {
-  color: var(--color-success);
-}
-
-.status-indicator.offline {
-  color: var(--color-error-text);
-}
-
-.refresh-btn {
-  padding: 8px 16px;
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.refresh-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.logout-btn {
-  padding: 12px 24px;
-  background: #fee2e2;
-  color: #dc2626;
-  border: 2px solid #fecaca;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-  background: #dc2626;
-  color: white;
-  border-color: #dc2626;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+  padding-bottom: 80px;
+  /* Space for bottom menu */
 }
 
 .loading {
@@ -1057,33 +1108,6 @@ onMounted(() => {
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
   line-height: 1.5;
-}
-
-.btn-edit-stand {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.85rem;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.btn-edit-stand:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
-}
-
-.edit-icon {
-  font-size: 1.1rem;
 }
 
 .markets-section {
@@ -1225,9 +1249,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f1f5f9;
+  /*  margin-bottom: 12px;*/
+  /*  padding-bottom: 12px;*/
+  /*  border-bottom: 2px solid #f1f5f9;*/
 }
 
 .market-icon {
@@ -1242,12 +1266,57 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
 }
 
+.market-header-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .market-name {
   font-weight: 700;
   font-size: 1.3rem;
   color: #1a202c;
   margin: 0;
-  flex: 1;
+}
+
+.market-place {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.place-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.place-text {
+  color: #64748b;
+}
+
+.market-location-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 12px;
+  align-self: flex-start;
+}
+
+.location-separator {
+  color: #cbd5e1;
+  font-size: 1.2rem;
+  font-weight: 300;
+}
+
+.location-text {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .market-details {
@@ -1339,6 +1408,34 @@ onMounted(() => {
   transform: translateX(4px);
 }
 
+.btn-start-commands {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  width: 100%;
+}
+
+.btn-start-commands:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-start-commands:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-edit-location {
   display: flex;
   align-items: center;
@@ -1370,15 +1467,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 8px;
+  padding: 3px 6px;
   background: transparent;
   color: #667eea;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-left: auto;
   flex-shrink: 0;
+  margin-left: 4px;
 }
 
 .btn-edit-location-inline:hover:not(:disabled) {
@@ -1423,38 +1520,6 @@ onMounted(() => {
   color: #64748b;
   margin: 0;
   line-height: 1.5;
-}
-
-.stand-actions-section {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 2px solid #e2e8f0;
-}
-
-.btn-manage-products {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  padding: 14px 24px;
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: white;
-  text-decoration: none;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.3);
-}
-
-.btn-manage-products:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
-}
-
-.products-icon {
-  font-size: 1.5rem;
 }
 
 .empty-state {
